@@ -109,6 +109,23 @@ playwright.config.js, tests/e2e/   E2E scaffolding
 .forceignore
 ```
 
+### Verified toolchain (as of 2026-09-30)
+
+These versions are exercised in CI, and the generated workflow matches them.
+
+| Component                      | Version                | Notes                                                                  |
+| ------------------------------ | ---------------------- | ---------------------------------------------------------------------- |
+| Node                           | 18 / 20 / 22 / 24 / 26 | Tested across all five; the workflow defaults to **24** (current LTS)  |
+| Java (Temurin)                 | **25** (current LTS)   | CI confirms PMD/CPD/SFGE start; Code Analyzer requires JDK 11 or later |
+| Python                         | **3.14**               | CI installs rtk-sf and builds its index                                |
+| Salesforce CLI / Code Analyzer | `@latest` / 5.16.0     | CI installs the newest on every run                                    |
+| actions/checkout, setup-node   | v7                     | upload-artifact v7, setup-java v6, setup-python v7                     |
+| ESLint                         | **9.39.5**             | 10.x does **not** work — see below                                     |
+
+**Why not ESLint 10** (verified against the registry): `@salesforce/eslint-config-lwc@4.1.2` declares a peer of `eslint: ^9`, and beneath it `@babel/eslint-parser@7.29.9` — required by `@lwc/eslint-plugin-lwc@3` — declares `^7.5.0 || ^8.0.0 || ^9.0.0`. `npm install eslint@10` fails resolution outright. This will follow once the LWC config ships an eslint 10 peer.
+
+> `upload-artifact` v6 and later need Actions Runner 2.327.1+. GitHub-hosted runners are fine; **update self-hosted runners first**.
+
 ---
 
 ## Configure

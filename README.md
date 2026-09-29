@@ -80,6 +80,23 @@ playwright.config.js, tests/e2e/   E2E 雛形
 .forceignore
 ```
 
+### 検証済みツールチェーン（2026-09-30 時点）
+
+CI で実際に実行して確認しているバージョンです。生成されるワークフローもこれに合わせています。
+
+| 対象                           | バージョン             | 備考                                                                        |
+| ------------------------------ | ---------------------- | --------------------------------------------------------------------------- |
+| Node                           | 18 / 20 / 22 / 24 / 26 | テストは 5 系統で実行。ワークフロー既定は **24**（現行 LTS）                |
+| Java (Temurin)                 | **25**（現行 LTS）     | PMD/CPD/SFGE が起動することを CI で確認。Code Analyzer の要件は JDK 11 以上 |
+| Python                         | **3.14**               | rtk-sf の導入・索引まで CI で確認                                           |
+| Salesforce CLI / Code Analyzer | `@latest` / 5.16.0     | CI は毎回最新を導入                                                         |
+| actions/checkout・setup-node   | v7                     | upload-artifact v7、setup-java v6、setup-python v7                          |
+| ESLint                         | **9.39.5**             | 10.x は**使えません**（下記）                                               |
+
+**ESLint 10 を採用していない理由**（レジストリで実測）: `@salesforce/eslint-config-lwc@4.1.2` の peer が `eslint: ^9`、さらにその下の `@babel/eslint-parser@7.29.9`（`@lwc/eslint-plugin-lwc@3` が要求）の peer が `^7.5.0 || ^8.0.0 || ^9.0.0` です。`npm install eslint@10` は解決エラーで停止します。LWC 設定が eslint 10 に対応した時点で追随します。
+
+> `upload-artifact` v6 以降は Actions Runner 2.327.1 以上が必要です。GitHub ホストランナーは対応済みですが、**セルフホストランナーは先に更新**してください。
+
 ---
 
 ## 設定

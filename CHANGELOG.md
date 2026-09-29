@@ -4,6 +4,42 @@ All notable changes to sfdx-devops-kit are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] — 2026-09-30
+
+### Changed
+
+**Toolchain brought up to date** (checked against the npm registry and each
+action's releases, then verified in CI)
+
+- `actions/checkout` v5 → v7, `setup-node` v5 → v7, `setup-java` v5 → v6,
+  `setup-python` v6 → v7, `upload-artifact` v4 → v7.
+- Node 22 → 24 (current LTS) in both workflows; this kit's own test matrix now
+  covers 18, 20, 22, 24 and 26.
+- Java 21 → 25 (current LTS). Code Analyzer requires JDK 11 or later with no
+  documented upper bound, and CI confirms PMD/CPD/SFGE start on 25.
+- Python 3.12 → 3.14, with rtk-sf installed and indexed on it in CI.
+
+Breaking changes in those majors, and why they do not affect this kit:
+`upload-artifact` v6+ needs Actions Runner 2.327.1+ (GitHub-hosted runners
+qualify; self-hosted must be updated first); `checkout` v7 blocks fork-PR
+checkouts under `pull_request_target`/`workflow_run`, which this template does
+not use; `setup-node` v6 limits automatic caching to npm, which the template
+already requests explicitly; `setup-java` v6 drops legacy Adopt distributions
+(`temurin` is used); `setup-python` v7 removes the `pip-install` input (unused).
+
+**ESLint stays on 9.39.5** although 10.11.0 is released. Two layers of the LWC
+toolchain still refuse it: `@salesforce/eslint-config-lwc@4.1.2` declares a peer
+of `eslint: ^9`, and `@babel/eslint-parser@7.29.9` beneath it declares
+`^7.5.0 || ^8.0.0 || ^9.0.0`. `npm install eslint@10` fails resolution outright.
+
+### Added
+
+- A `toolchain` CI job that proves the above rather than assuming it: on Java 25,
+  Python 3.14 and Node 24 it lints a real LWC with two known violations (the gate
+  must fail and name the rules), then the fixed version (must pass), checks that
+  the Prettier gate is a check and not a formatter, starts the Code Analyzer
+  engines, and installs and indexes rtk-sf.
+
 ## [0.2.0] — 2026-09-30
 
 ### Added

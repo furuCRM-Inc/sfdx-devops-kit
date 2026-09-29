@@ -97,7 +97,8 @@ exit 2 で失敗します。
 
 PMD・CPD・SFGE は Java 製エンジンです。JDK 11 以上が無いと起動に失敗し、キットは
 それを「コード違反」ではなく**環境問題**として報告します。`rule_selector: eslint`
-なら Java 不要です。
+なら Java 不要です。生成される CI ワークフローは Temurin **25**（現行 LTS）を導入し、
+エンジンが起動することを本キットの CI で確認しています。
 
 ### `validate_deploy` / `deploy`
 
