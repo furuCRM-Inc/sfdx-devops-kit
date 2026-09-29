@@ -57,6 +57,8 @@ git clone https://github.com/furuCRM-Inc/sfdx-devops-kit
 sfdx-pipeline.config.yml           単一の真実（設定）
 .github/workflows/sfdx-ci-cd.yml   plan → quality → validate → deploy → deliverables
 .github/pull_request_template.md   成果物セクション付き PR テンプレート
+.mcp.json                          Backlog MCP + rtk-sf 登録（資格情報は含まない）
+.claude/skills/sfdx-ticket.md      /sfdx-ticket
 .claude/skills/sfdx-review.md      /sfdx-review
 .claude/skills/sfdx-deliverables.md  /sfdx-deliverables
 .claude/rules/salesforce-governance.md

@@ -78,6 +78,8 @@ Installed files:
 sfdx-pipeline.config.yml           the single source of truth
 .github/workflows/sfdx-ci-cd.yml   plan → quality → validate → deploy → deliverables
 .github/pull_request_template.md   includes a delivered-metadata section
+.mcp.json                          Backlog MCP + rtk-sf registration (no credentials)
+.claude/skills/sfdx-ticket.md      /sfdx-ticket
 .claude/skills/sfdx-review.md      /sfdx-review
 .claude/skills/sfdx-deliverables.md  /sfdx-deliverables
 .claude/rules/salesforce-governance.md
