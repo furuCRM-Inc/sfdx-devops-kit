@@ -9,6 +9,7 @@ files.
 
 ```bash
 npx sfdx-devops-kit init .      # scaffold pipeline, CI, Claude skills, knowledge base
+npx sfdx-devops-kit setup       # interactive: environments, auth, secrets, Backlog, rtk-sf
 npx sfdx-devops-kit validate    # check the config, list the GitHub Secrets you need
 npx sfdx-devops-kit plan        # see exactly what CI will run, and why
 npx sfdx-devops-kit run         # run it locally, with the same gates
@@ -63,10 +64,29 @@ analyzer engines (PMD/CPD/SFGE).
 # In an existing SFDX project
 npx sfdx-devops-kit init .
 
-# Or scaffold a new project and the pipeline together
+# Or scaffold a new project and the pipeline together (wizard included)
 git clone https://github.com/furuCRM-Inc/sfdx-devops-kit
 ./sfdx-devops-kit/scripts/setup-project.sh ./my-project --name my-project
 ```
+
+### The setup wizard
+
+Run `npx sfdx-devops-kit setup` after installing. It configures environments,
+org authentication, the CI secrets, Backlog and rtk-sf, and it is safe to
+re-run — the config file is left alone when nothing changed.
+
+- Offers the orgs `sf org list` already knows and writes the `environments:`
+  block from your picks, comments intact
+- Stores each `SF_<ENV>_AUTH_URL` with `gh secret set`, passing the auth URL on
+  stdin so it never reaches the screen, a log or argv
+- Validates a Backlog API key (64 alphanumeric characters, then a live
+  `users/myself` call) before writing it to
+  `~/.config/sfdx-devops-kit/backlog.env` — mode 600, outside the repository
+- Indexes metadata with rtk-sf and registers its MCP server
+
+See [the operations manual](docs/OPERATIONS_MANUAL.en.md#the-setup-wizard) for
+the full walkthrough. The wizard needs a terminal; in CI use `validate` and
+`plan` instead.
 
 `init` never overwrites: existing files are kept unless you pass `--force`, and
 `package.json` is **merged** (your pins and scripts survive). `--dry-run` shows
@@ -258,7 +278,7 @@ over MCP, so the review reads a class skeleton rather than a whole file, and the
 more.
 
 ```bash
-pip install "git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.0"
+pip install "git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.1"
 claude mcp add rtk-sf -- python3 -m rtk_sf serve
 python3 -m rtk_sf index
 ```

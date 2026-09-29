@@ -58,6 +58,7 @@ function main(argv) {
 
   const handlers = {
     init: cmdInit,
+    setup: cmdSetup,
     validate: cmdValidate,
     plan: cmdPlan,
     run: cmdRun,
@@ -74,7 +75,18 @@ function main(argv) {
   }
 
   try {
-    process.exit(handler({ positionals, flags }));
+    const outcome = handler({ positionals, flags });
+    if (outcome instanceof Promise) {
+      outcome.then(
+        (code) => process.exit(code),
+        (error) => {
+          console.error(`✖ ${error.message}`);
+          process.exit(EXIT_USAGE);
+        },
+      );
+      return;
+    }
+    process.exit(outcome);
   } catch (error) {
     console.error(`✖ ${error.message}`);
     process.exit(EXIT_USAGE);
@@ -120,6 +132,28 @@ function cmdInit({ positionals, flags }) {
   console.log("  3. npx sfdx-devops-kit validate");
   console.log("  4. Add GitHub Secrets for each environment (see `validate` output).");
   return EXIT_OK;
+}
+
+/**
+ * Interactive wizard: environments, org authorization, GitHub Secrets, Backlog
+ * credentials and rtk-sf. Everything `init` cannot decide on its own.
+ */
+async function cmdSetup({ positionals, flags }) {
+  const targetDir = path.resolve(positionals[0] ?? process.cwd());
+
+  if (!process.stdin.isTTY && !flags.force) {
+    console.error(
+      "✖ setup は対話式です。端末から実行してください。\n" +
+        "  CI では `validate` と `plan` を使うか、設定ファイルを直接編集してください。",
+    );
+    return EXIT_USAGE;
+  }
+
+  const { runSetup } = await import("../src/setup-wizard.mjs");
+  return runSetup({
+    cwd: targetDir,
+    skip: { environments: Boolean(flags["keep-environments"]), backlog: Boolean(flags["no-backlog"]) },
+  });
 }
 
 function cmdValidate({ flags }) {
@@ -580,6 +614,7 @@ USAGE
 
 COMMANDS
   init [dir]        Install pipeline, CI workflow, Claude skills and knowledge base
+  setup [dir]       Interactive wizard: environments, org auth, secrets, Backlog, rtk-sf
   validate          Validate sfdx-pipeline.config.yml and list required GitHub Secrets
   plan              Show the resolved pipeline (which stages run, with what commands)
   run [stage...]    Execute the pipeline, or only the named stages
@@ -595,6 +630,8 @@ OPTIONS
   --dry-run            Print what would run without executing or writing
   --force              Overwrite existing files (init)
   --project-name <n>   Project name substituted into templates (init)
+  --keep-environments  Leave the configured environments untouched (setup)
+  --no-backlog         Skip the Backlog step (setup)
   --base <ref>         Diff base for deliverables (default: origin/main)
   --head <ref>         Diff head for deliverables (default: HEAD)
   --format <f>         deliverables output: md | json | package-xml
@@ -611,6 +648,7 @@ STAGES
 
 EXAMPLES
   sfdx-devops-kit init .
+  sfdx-devops-kit setup .
   sfdx-devops-kit validate
   sfdx-devops-kit plan --env st
   sfdx-devops-kit run --env st --dry-run

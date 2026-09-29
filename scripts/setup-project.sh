@@ -5,8 +5,13 @@
 # package.json is merged rather than overwritten. Pass --dry-run to see what
 # would happen without touching the working tree.
 #
+# The last step is the interactive configuration wizard (`sfdx-devops-kit
+# setup`): environments, org authentication, GitHub Secrets, Backlog and rtk-sf.
+# It is skipped when stdin is not a terminal, so CI runs stay non-interactive.
+#
 #   ./setup-project.sh [target-dir] [--name <project>] [--force] [--dry-run]
-#                      [--skip-install] [--skip-rtk-sf] [--python <bin>]
+#                      [--skip-install] [--skip-rtk-sf] [--no-wizard]
+#                      [--python <bin>]
 set -euo pipefail
 
 TARGET_DIR="."
@@ -15,6 +20,7 @@ FORCE=""
 DRY_RUN=""
 SKIP_INSTALL=""
 SKIP_RTK=""
+SKIP_WIZARD=""
 PYTHON_BIN="python3"
 
 # Resolve the kit root from this script's location so it works when vendored.
@@ -33,9 +39,10 @@ while [ $# -gt 0 ]; do
     --dry-run)      DRY_RUN="--dry-run"; shift ;;
     --skip-install) SKIP_INSTALL="1"; shift ;;
     --skip-rtk-sf)  SKIP_RTK="1"; shift ;;
+    --no-wizard)    SKIP_WIZARD="1"; shift ;;
     --python)       PYTHON_BIN="${2:-python3}"; shift 2 ;;
     -h|--help)
-      sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
       exit 0 ;;
     -*)             die "Unknown option: $1" ;;
     *)              TARGET_DIR="$1"; shift ;;
@@ -103,9 +110,35 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# rtk-sf: the default AI companion. Missing is a warning, never fatal.
+# Configuration. The wizard owns everything that needs a decision or a
+# credential — environments, org logins, GitHub Secrets, Backlog, rtk-sf — so
+# this script never asks the same question twice. Without a terminal it is
+# skipped and rtk-sf is set up directly, which keeps unattended runs working.
 # ---------------------------------------------------------------------------
-if [ -n "${SKIP_RTK}" ]; then
+WIZARD_RAN=""
+if [ -n "${DRY_RUN}" ]; then
+  warn "Dry run: skipping the configuration wizard."
+elif [ -n "${SKIP_WIZARD}" ]; then
+  warn "Skipping the configuration wizard (--no-wizard)."
+elif [ ! -t 0 ]; then
+  warn "Not a terminal: skipping the configuration wizard."
+  warn "Run \`npx sfdx-devops-kit setup\` from a terminal to finish the setup."
+else
+  info "Starting the configuration wizard"
+  if ( cd "${TARGET_DIR}" && node "${KIT_ROOT}/bin/cli.mjs" setup ); then
+    WIZARD_RAN="1"
+  else
+    warn "The wizard did not finish. Re-run it with: npx sfdx-devops-kit setup"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# rtk-sf: the default AI companion. Missing is a warning, never fatal. The
+# wizard already offers this, so only unattended runs land here.
+# ---------------------------------------------------------------------------
+if [ -n "${WIZARD_RAN}" ]; then
+  :
+elif [ -n "${SKIP_RTK}" ]; then
   warn "Skipping rtk-sf setup (--skip-rtk-sf)."
 elif [ -n "${DRY_RUN}" ]; then
   warn "Dry run: skipping rtk-sf index and MCP registration."
@@ -128,7 +161,7 @@ else
   else
     warn "rtk-sf not installed. It is this kit's default AI companion (compressed"
     warn "metadata specs over MCP + generated system documentation)."
-    warn "  pip install \"git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.0\""
+    warn "  pip install \"git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.1\""
     warn "Pipeline stages needing it are skipped, not failed, until then."
   fi
 fi
@@ -137,9 +170,13 @@ log ""
 log "=================================================="
 log " Done."
 log "=================================================="
-log " 1. Edit ${TARGET_DIR}/sfdx-pipeline.config.yml"
-log "      org aliases, thresholds, Backlog project key"
-log " 2. npx sfdx-devops-kit validate     # config + required GitHub Secrets"
-log " 3. npx sfdx-devops-kit plan         # what CI will run"
-log " 4. Add each SF_<ENV>_AUTH_URL secret in GitHub"
+if [ -n "${WIZARD_RAN}" ]; then
+  log " 1. npx sfdx-devops-kit plan         # what CI will run"
+  log " 2. npx sfdx-devops-kit doctor       # toolchain, Java, rtk-sf, Backlog"
+  log " 3. Commit and push — the workflow runs on the first pull request"
+else
+  log " 1. npx sfdx-devops-kit setup        # environments, auth, secrets, Backlog"
+  log " 2. npx sfdx-devops-kit validate     # config + required GitHub Secrets"
+  log " 3. npx sfdx-devops-kit plan         # what CI will run"
+fi
 log "=================================================="

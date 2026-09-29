@@ -54,7 +54,55 @@ you need to edit the workflow YAML, a config option is missing — open an issue
 cd my-sfdx-project
 npx sfdx-devops-kit init .
 npm install
+npx sfdx-devops-kit setup      # interactive: environments, auth, secrets, Backlog, rtk-sf
 ```
+
+For a project that does not exist yet, one script does all of it — generate,
+install, dependencies, wizard:
+
+```bash
+./sfdx-devops-kit/scripts/setup-project.sh ./my-project --name my-project
+```
+
+### The setup wizard
+
+`setup` walks seven sections and is safe to re-run: it leaves the config file
+untouched when nothing changed, and every step can be declined.
+
+| Section           | What it does                                                                                                                  |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 1. Project        | Sets `project_name`.                                                                                                          |
+| 2. Environments   | Offers the orgs `sf org list` already knows, or takes them by hand. Rewrites only the `environments:` block, comments intact. |
+| 3. Authentication | Logs in to unauthorized orgs with `sf org login web` (sandboxes via `test.salesforce.com`). Declining is fine.                |
+| 4. GitHub Secrets | Stores each `SF_<ENV>_AUTH_URL` with `gh secret set`. The auth URL travels on stdin — never a log line, never argv.           |
+| 5. Backlog        | Project key goes in the config; domain and API key go to `~/.config/sfdx-devops-kit/backlog.env` (mode 600).                  |
+| 6. rtk-sf         | Detects the install, then offers `rtk_sf index` and MCP registration with Claude Code.                                        |
+| 7. Verify         | Runs the same checks as `validate` and prints errors and warnings.                                                            |
+
+What the wizard guarantees about credentials:
+
+- **Nothing secret is written into the config file or the repository.** Auth URLs
+  live in GitHub Secrets; the Backlog key lives under your home directory.
+- **Nothing secret reaches the screen.** The API key prompt stops echoing, and a
+  key pasted as a single chunk is accepted.
+- **Nothing secret reaches argv.** Values are piped to `gh` and to the Backlog
+  API on stdin, so they never appear in `ps` output or shell history.
+- **A key is checked before it is stored.** It must be 64 alphanumeric
+  characters and must authenticate against `users/myself`; a key pasted with
+  surrounding prose, or a revoked one, is rejected on the spot with the reason
+  (up to three attempts).
+
+Load the Backlog credentials in your shell from `~/.zshrc`:
+
+```bash
+set -a; . ~/.config/sfdx-devops-kit/backlog.env; set +a
+```
+
+> The wizard needs a terminal. In CI and other non-interactive environments it
+> does not start — use `validate` and `plan`, or edit the config file directly.
+> `setup-project.sh` skips it automatically when stdin is not a terminal.
+
+### Doing it by hand
 
 Edit `sfdx-pipeline.config.yml` (org aliases, thresholds, Backlog project key),
 then:
@@ -71,7 +119,7 @@ Required GitHub Secrets:
   SF_PROD_AUTH_URL         → Production (production)
 ```
 
-Register each secret:
+Register each secret (section 4 of the wizard does this for you):
 
 ```bash
 sf org display --target-org STSandbox --verbose | grep "Sfdx Auth Url"
@@ -84,7 +132,7 @@ gh secret set SF_ST_AUTH_URL   # paste the value when prompted, do not put it in
 Claude Code and rtk-sf:
 
 ```bash
-pip install "git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.0"
+pip install "git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.1"
 claude mcp add rtk-sf -- python3 -m rtk_sf serve
 python3 -m rtk_sf index
 npx sfdx-devops-kit doctor

@@ -7,6 +7,7 @@
 
 ```bash
 npx sfdx-devops-kit init .      # パイプライン・CI・Claude スキル・ナレッジを配置
+npx sfdx-devops-kit setup       # 対話設定：環境・org 認証・Secrets・Backlog・rtk-sf
 npx sfdx-devops-kit validate    # 設定検証と必要な GitHub Secrets の一覧
 npx sfdx-devops-kit plan        # CI が何を実行するか（と理由）を表示
 npx sfdx-devops-kit run         # 同じゲートでローカル実行
@@ -44,10 +45,21 @@ Salesforce のパイプラインは、閾値が埋め込まれ org 別名がハ�
 # 既存の SFDX プロジェクトに追加
 npx sfdx-devops-kit init .
 
-# 新規プロジェクトとパイプラインを同時に作成
+# 新規プロジェクトとパイプラインを同時に作成（初期設定ウィザードまで実行）
 git clone https://github.com/furuCRM-Inc/sfdx-devops-kit
 ./sfdx-devops-kit/scripts/setup-project.sh ./my-project --name my-project
 ```
+
+### 初期設定ウィザード
+
+導入後は `npx sfdx-devops-kit setup` を実行します。環境（org）、org 認証、CI 用 GitHub Secrets、Backlog 連携、rtk-sf を対話形式で設定します。何度でも再実行でき、変更がなければ設定ファイルを書き換えません。
+
+- 認証済み org を `sf org list` から提示し、選ぶだけで `environments:` を生成（コメントは保持）
+- `SF_<ENV>_AUTH_URL` を `gh secret set` へ登録（認証 URL は stdin 経由。画面・ログ・argv に出しません）
+- Backlog の API キーは保存前に 64 文字の英数字かを検証し、`users/myself` で疎通確認してから `~/.config/sfdx-devops-kit/backlog.env`（mode 600、リポジトリ外）へ保存
+- rtk-sf の索引作成と MCP 登録
+
+詳細は[運用マニュアル「初期設定ウィザード」](docs/OPERATIONS_MANUAL.md#2-初期設定ウィザード推奨)を参照してください。端末が無い環境（CI など）では起動せず、`validate` / `plan` を使います。
 
 `init` は**既存ファイルを上書きしません**（`--force` 指定時のみ）。`package.json` は**マージ**されるため、既存のスクリプトやバージョン固定は保持されます。`--dry-run` で事前確認できます。
 
@@ -196,7 +208,7 @@ npx sfdx-devops-kit deliverables --base origin/develop --format package-xml \
 [rtk-sf](https://github.com/furuCRM-Inc/rtk-sf) は MCP 経由で圧縮メタデータ仕様を提供します。レビューはファイル全文ではなくクラスのスケルトンを読み、`documentation` ステージは機能マトリクス・シーケンス図・ERD などを生成します。
 
 ```bash
-pip install "git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.0"
+pip install "git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.1"
 claude mcp add rtk-sf -- python3 -m rtk_sf serve
 python3 -m rtk_sf index
 ```

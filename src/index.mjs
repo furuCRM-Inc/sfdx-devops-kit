@@ -22,7 +22,12 @@ export {
   validateConfig,
 } from "./config.mjs";
 
-export { analyzerCommand, deployCommand, enabledStages, planPipeline } from "./stages.mjs";
+export {
+  analyzerCommand,
+  deployCommand,
+  enabledStages,
+  planPipeline,
+} from "./stages.mjs";
 
 export { runPipeline, runStage } from "./run.mjs";
 
@@ -67,3 +72,21 @@ export {
   TEMPLATE_MAP,
   TEMPLATE_ROOT,
 } from "./scaffold.mjs";
+
+export {
+  BACKLOG_ENV_PATH,
+  backlogEnvContents,
+  ENV_KEY_PATTERN,
+  nextSteps,
+  normalizeBacklogDomain,
+  planCredentials,
+  renderEnvironmentsBlock,
+  setScalar,
+  setTopLevelScalar,
+  SUGGESTED_KEYS,
+  suggestEnvironment,
+  upsertEnvironments,
+  validateBacklogKey,
+} from "./setup.mjs";
+
+export { runSetup } from "./setup-wizard.mjs";

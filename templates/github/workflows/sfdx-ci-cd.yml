@@ -245,7 +245,7 @@ jobs:
 
       - name: Install rtk-sf
         if: fromJSON(needs.plan.outputs.plan).enabled.documentation
-        run: pip install "git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.0"
+        run: pip install "git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.1"
 
       - name: Generate system documentation
         if: fromJSON(needs.plan.outputs.plan).enabled.documentation

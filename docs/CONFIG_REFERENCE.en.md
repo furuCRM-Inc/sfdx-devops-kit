@@ -139,8 +139,8 @@ ai_assist:
 | `enabled`        | `true`    | Integrated by default                                            |
 | `required`       | `false`   | `true` makes a missing rtk-sf fail the build instead of skipping |
 | `python`         | `python3` | Interpreter that has rtk-sf installed                            |
-| `index_on_setup` | `true`    | `setup-project.sh` runs `rtk_sf index`                           |
-| `register_mcp`   | `true`    | `setup-project.sh` registers the MCP server                      |
+| `index_on_setup` | `true`    | `setup` / `setup-project.sh` runs `rtk_sf index`                 |
+| `register_mcp`   | `true`    | `setup` / `setup-project.sh` registers the MCP server            |
 
 ---
 

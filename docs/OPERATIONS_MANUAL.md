@@ -73,9 +73,114 @@ npx sfdx-devops-kit init .
 npm install
 ```
 
-### 2. 設定を自社環境に合わせる
+新規プロジェクトを一から作る場合は、生成・導入・依存関係・ウィザードまでを 1 本で
+実行できます。
 
-`sfdx-pipeline.config.yml` の org 別名、閾値、Backlog プロジェクトキーを編集：
+```bash
+./sfdx-devops-kit/scripts/setup-project.sh ./my-project --name my-project
+```
+
+### 2. 初期設定ウィザード（推奨）
+
+環境・org 認証・GitHub Secrets・Backlog・rtk-sf を対話形式で設定します。何度でも
+再実行でき、変更がなければファイルを書き換えません。
+
+```bash
+npx sfdx-devops-kit setup
+```
+
+```text
+── 1. プロジェクト ───────────────────────────────────────────────
+プロジェクト名 [my-project]: proj-crm
+
+── 2. 環境（org） ──────────────────────────────────────────────
+現在の設定:
+  dev          DevSandbox (sandbox)
+  st           STSandbox (sandbox)
+  uat          UATSandbox (sandbox)
+  prod         Production (production)
+設定し直しますか (y/n) [n]: y
+
+認証済みの org:
+   1. DevSandbox              → dev (sandbox)
+   2. STSandbox               → st (sandbox)
+   3. UATSandbox              → uat (sandbox)
+   4. Production              → prod (production)
+   番号をカンマ区切りで選択（例: 1,3,4）。空欄なら手入力に進みます。
+選択: 1,2,3,4
+
+CI の検証・E2E を実行する環境（is_test_target） [st]: st
+prod: リリース manifest（manifest/package.xml）でデプロイしますか (y/n) [y]: y
+✔ sfdx-pipeline.config.yml に 4 環境を書き込みました
+
+── 3. org 認証 ───────────────────────────────────────────────
+✔ dev          DevSandbox — 認証済み
+✔ st           STSandbox — 認証済み
+⚠ uat          UATSandbox — 未認証
+   ブラウザで UATSandbox にログインしますか (y/n) [n]: y
+✔ UATSandbox を認証しました
+
+── 4. GitHub Secrets（CI 用の org 認証） ─────────────────────────
+対象リポジトリ: your-org/proj-crm
+✔ SF_DEV_AUTH_URL — 登録済み
+   SF_ST_AUTH_URL を登録しますか（STSandbox） (y/n) [y]: y
+✔ SF_ST_AUTH_URL を登録しました
+
+── 5. Backlog 連携（任意） ───────────────────────────────────────
+Backlog 連携を設定しますか (y/n) [y]: y
+Backlog プロジェクトキー（例: PROJ） [PROJECT_KEY]: PROJ
+Backlog ドメイン（例: your-space.backlog.com）: your-space.backlog.com
+API キー（入力は表示されません。個人設定 → API で発行）:
+✔ 認証成功: <あなたの表示名> (userId 12345)
+✔ 資格情報を ~/.config/sfdx-devops-kit/backlog.env に保存しました（mode 600、リポジトリ外）
+
+── 6. rtk-sf（既定の AI コンパニオン） ────────────────────────────────
+✔ rtk-sf 0.10.1
+   メタデータを索引しますか（rtk_sf index） (y/n) [y]: y
+   MCP サーバーを登録しますか (y/n) [y]: y
+
+── 7. 検証 ───────────────────────────────────────────────────
+✔ 設定は有効です
+```
+
+各セクションの役割：
+
+| セクション        | 実行内容                                                                                                        |
+| ----------------- | --------------------------------------------------------------------------------------------------------------- |
+| 1. プロジェクト   | `project_name` を設定                                                                                           |
+| 2. 環境           | `sf org list` の認証済み org から選択、または手入力。`environments:` ブロックのみを書き換え（コメントは保持）   |
+| 3. org 認証       | 未認証の org を `sf org login web` で認証（sandbox は `test.salesforce.com`）。断ってもセットアップは続行します |
+| 4. GitHub Secrets | `SF_<ENV>_AUTH_URL` を `gh secret set` で登録。認証 URL は stdin 経由で渡し、画面にもログにも出しません         |
+| 5. Backlog        | プロジェクトキーを設定ファイルへ、ドメインと API キーは `~/.config/sfdx-devops-kit/backlog.env`（mode 600）へ   |
+| 6. rtk-sf         | 導入状況を検出し、`rtk_sf index` と Claude Code への MCP 登録を実行                                             |
+| 7. 検証           | `validate` と同じ検査を実行し、エラー・警告を表示                                                               |
+
+秘密情報の扱い（ウィザードが守る規則）：
+
+- **設定ファイルにもリポジトリにも書きません。** 認証 URL は GitHub Secrets、
+  Backlog の API キーはホームディレクトリ配下のみ。
+- **画面にもスクロールバックにも残しません。** API キー入力中は表示が止まり、
+  貼り付け（1 チャンクでの入力）にも対応します。
+- **コマンドライン引数にしません。** `gh secret set` と Backlog 検証には stdin
+  で渡すため、`ps` や shell history に現れません。
+- **保存前に検証します。** API キーは 64 文字の英数字かを確認し、Backlog API で
+  疎通確認（`users/myself`）してから保存します。説明文まで貼り付けた場合や失効した
+  キーは、その場で理由付きで拒否されます（最大 3 回まで再入力）。
+
+Backlog の資格情報をシェルで読み込むには、`~/.zshrc` などに次を追加します。
+
+```bash
+set -a; . ~/.config/sfdx-devops-kit/backlog.env; set +a
+```
+
+> ウィザードは端末が必要です。CI や非対話環境では起動せず、`validate` と `plan`
+> を使うか設定ファイルを直接編集してください（`setup-project.sh` も非対話時は
+> ウィザードをスキップします）。
+
+### 3. 設定を自社環境に合わせる（手動編集）
+
+ウィザードを使わない場合、または細かく調整する場合は
+`sfdx-pipeline.config.yml` を直接編集します。
 
 ```yaml
 project_name: "proj-crm"
@@ -100,7 +205,10 @@ backlog_integration:
   project_key: "PROJ"
 ```
 
-### 3. 検証と Secrets 登録
+### 4. 検証と Secrets 登録（手動の場合）
+
+ウィザードの「4. GitHub Secrets」を使えばこの作業は不要です。手で登録する場合は
+まず必要な Secret 名を確認します。
 
 ```bash
 $ npx sfdx-devops-kit validate
@@ -125,10 +233,13 @@ gh secret set SF_ST_AUTH_URL   # paste the value when prompted, do not put it in
 > **注意**：認証 URL はパスワード同等です。コミット・チケット・ログ・生成
 > ドキュメントに絶対に残さないでください。
 
-### 4. Claude Code と rtk-sf
+### 5. Claude Code と rtk-sf
+
+ウィザードの「6. rtk-sf」で索引と MCP 登録まで済んでいれば、確認だけで十分です。
+手動で行う場合：
 
 ```bash
-pip install "git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.0"
+pip install "git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.1"
 claude mcp add rtk-sf -- python3 -m rtk_sf serve
 python3 -m rtk_sf index
 npx sfdx-devops-kit doctor   # 環境の健全性チェック
@@ -137,7 +248,7 @@ npx sfdx-devops-kit doctor   # 環境の健全性チェック
 Backlog MCP サーバーも Claude Code に登録しておきます（チケット参照・コメント
 投稿・ステータス更新に使用）。
 
-### 5. 本番デプロイに承認を付ける（推奨）
+### 6. 本番デプロイに承認を付ける（推奨）
 
 GitHub の Settings → Environments で `Production` 環境を作り、Required
 reviewers を設定します。生成済みワークフローの `deploy` ジョブは

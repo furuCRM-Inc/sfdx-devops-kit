@@ -137,13 +137,13 @@ ai_assist:
     register_mcp: true
 ```
 
-| キー             | 既定値    | 説明                                                |
-| ---------------- | --------- | --------------------------------------------------- |
-| `enabled`        | `true`    | 既定で統合                                          |
-| `required`       | `false`   | `true` にすると未導入時にスキップではなくビルド失敗 |
-| `python`         | `python3` | rtk-sf を導入した Python インタプリタ               |
-| `index_on_setup` | `true`    | `setup-project.sh` が `rtk_sf index` を実行         |
-| `register_mcp`   | `true`    | `setup-project.sh` が MCP サーバーを登録            |
+| キー             | 既定値    | 説明                                                  |
+| ---------------- | --------- | ----------------------------------------------------- |
+| `enabled`        | `true`    | 既定で統合                                            |
+| `required`       | `false`   | `true` にすると未導入時にスキップではなくビルド失敗   |
+| `python`         | `python3` | rtk-sf を導入した Python インタプリタ                 |
+| `index_on_setup` | `true`    | `setup` / `setup-project.sh` が `rtk_sf index` を実行 |
+| `register_mcp`   | `true`    | `setup` / `setup-project.sh` が MCP サーバーを登録    |
 
 ---
 

@@ -19,7 +19,7 @@ import { spawnSync } from "node:child_process";
 
 export const RTK_REPO = "https://github.com/furuCRM-Inc/rtk-sf";
 export const RTK_INSTALL_HINT =
-  'pip install "git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.0"';
+  'pip install "git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.1"';
 export const RTK_MCP_HINT = "claude mcp add rtk-sf -- python3 -m rtk_sf serve";
 
 /**
