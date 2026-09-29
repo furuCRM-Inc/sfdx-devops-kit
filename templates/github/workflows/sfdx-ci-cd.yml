@@ -47,11 +47,11 @@ jobs:
       environment: ${{ steps.plan.outputs.environment }}
       auth_secret: ${{ steps.plan.outputs.auth_secret }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
 
       - name: Install dependencies
@@ -74,7 +74,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           npx sfdx-devops-kit plan --env "$ENV_KEY" >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: pipeline-plan
           path: pipeline-plan.json
@@ -87,11 +87,11 @@ jobs:
     needs: plan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
 
       - name: Install dependencies
@@ -110,10 +110,10 @@ jobs:
       # start and Code Analyzer reports that as severity-1 findings.
       - name: Set up Java (Code Analyzer engines)
         if: fromJSON(needs.plan.outputs.plan).enabled.code_analyzer
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25" # current LTS; Code Analyzer needs JDK 11 or later
 
       - name: Install Salesforce CLI
         if: fromJSON(needs.plan.outputs.plan).enabled.code_analyzer
@@ -125,7 +125,7 @@ jobs:
 
       - name: Upload analyzer report
         if: always() && fromJSON(needs.plan.outputs.plan).enabled.code_analyzer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: code-analyzer-results
           path: code-analyzer-results.json
@@ -141,11 +141,11 @@ jobs:
     if: fromJSON(needs.plan.outputs.plan).enabled.validate_deploy || fromJSON(needs.plan.outputs.plan).enabled.unit_test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
 
       - name: Install dependencies
@@ -190,11 +190,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ needs.plan.outputs.environment }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
 
       - name: Install dependencies
@@ -229,7 +229,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always() && fromJSON(needs.plan.outputs.plan).enabled.e2e_test
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: playwright-report
@@ -239,9 +239,9 @@ jobs:
       # than assumed, and the stage self-skips when unavailable.
       - name: Set up Python (rtk-sf)
         if: fromJSON(needs.plan.outputs.plan).enabled.documentation
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
-          python-version: "3.12"
+          python-version: "3.14"
 
       - name: Install rtk-sf
         if: fromJSON(needs.plan.outputs.plan).enabled.documentation
@@ -253,7 +253,7 @@ jobs:
 
       - name: Upload generated documentation
         if: fromJSON(needs.plan.outputs.plan).enabled.documentation
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: system-documentation
           path: docs
@@ -269,13 +269,13 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
           cache: npm
 
       - name: Install dependencies
@@ -290,7 +290,7 @@ jobs:
             --base "origin/${{ github.base_ref }}" --format package-xml --out manifest/ticket-package.xml
           cat deliverables.md >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: deliverables
           path: |

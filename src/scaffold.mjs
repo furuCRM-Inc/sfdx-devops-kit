@@ -24,7 +24,10 @@ export const TEMPLATE_MAP = [
   ["claude/skills/sfdx-ticket.md", ".claude/skills/sfdx-ticket.md"],
   ["claude/skills/sfdx-review.md", ".claude/skills/sfdx-review.md"],
   ["claude/skills/sfdx-deliverables.md", ".claude/skills/sfdx-deliverables.md"],
-  ["claude/rules/salesforce-governance.md", ".claude/rules/salesforce-governance.md"],
+  [
+    "claude/rules/salesforce-governance.md",
+    ".claude/rules/salesforce-governance.md",
+  ],
   ["knowledge/sfdx/coding-rules.md", "knowledge/sfdx/coding-rules.md"],
   ["knowledge/sfdx/review-checklist.md", "knowledge/sfdx/review-checklist.md"],
   ["tests/e2e/example.spec.js", "tests/e2e/example.spec.js"],
@@ -59,7 +62,8 @@ export const SCAFFOLD_DIRS = [
  * Existing scripts are never replaced, so these are additive and unambiguous.
  */
 export const PACKAGE_SCRIPTS = {
-  "pipeline:lint": 'eslint "**/{aura,lwc}/**/*.js" --no-error-on-unmatched-pattern',
+  "pipeline:lint":
+    'eslint "**/{aura,lwc}/**/*.js" --no-error-on-unmatched-pattern',
   "pipeline:prettier":
     'prettier --check "**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}"',
   "pipeline:format":
@@ -77,9 +81,13 @@ export const PACKAGE_SCRIPTS = {
  * Only added when absent: a project generated from the Salesforce standard
  * template already pins these, and its pins win.
  *
- * `eslint` is pinned to 9.x deliberately, not to the newest release:
- * `@salesforce/eslint-config-lwc` declares `eslint: ^9` as a peer dependency, so
- * installing 10.x produces a project whose lint configuration cannot load.
+ * `eslint` is pinned to 9.x deliberately, not to the newest release (10.11.0 as
+ * of 2026-09-30). Two layers block it, both verified against the registry:
+ * `@salesforce/eslint-config-lwc@4.1.2` declares `eslint: ^9` as a peer, and
+ * `@babel/eslint-parser@7.29.9` — required by `@lwc/eslint-plugin-lwc@3` beneath
+ * it — declares `eslint: ^7.5.0 || ^8.0.0 || ^9.0.0`. Installing 10.x fails
+ * resolution outright, and forcing it produces a project whose lint
+ * configuration cannot load. Revisit when the LWC config ships an eslint 10 peer.
  */
 export const PACKAGE_DEV_DEPENDENCIES = {
   "@playwright/test": "^1.63.0",
@@ -155,7 +163,12 @@ export function scaffold({
  *
  * @returns {"created"|"merged"|"unchanged"}
  */
-export function mergePackageJson({ root, dryRun = false, projectName, versions = PACKAGE_DEV_DEPENDENCIES }) {
+export function mergePackageJson({
+  root,
+  dryRun = false,
+  projectName,
+  versions = PACKAGE_DEV_DEPENDENCIES,
+}) {
   const file = path.join(root, "package.json");
 
   if (!fs.existsSync(file)) {
@@ -166,7 +179,8 @@ export function mergePackageJson({ root, dryRun = false, projectName, versions =
       scripts: { ...PACKAGE_SCRIPTS },
       devDependencies: sortKeys({ ...versions }),
     };
-    if (!dryRun) fs.writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    if (!dryRun)
+      fs.writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
     return "created";
   }
 
@@ -183,8 +197,8 @@ export function mergePackageJson({ root, dryRun = false, projectName, versions =
 
   manifest.devDependencies ??= {};
   for (const [name, range] of Object.entries(versions)) {
-    const alreadyPresent = name in manifest.devDependencies ||
-      name in (manifest.dependencies ?? {});
+    const alreadyPresent =
+      name in manifest.devDependencies || name in (manifest.dependencies ?? {});
     if (!alreadyPresent) {
       manifest.devDependencies[name] = range;
       changed = true;
@@ -199,7 +213,9 @@ export function mergePackageJson({ root, dryRun = false, projectName, versions =
 }
 
 function sortKeys(object) {
-  return Object.fromEntries(Object.entries(object).sort(([a], [b]) => a.localeCompare(b)));
+  return Object.fromEntries(
+    Object.entries(object).sort(([a], [b]) => a.localeCompare(b)),
+  );
 }
 
 /** Read a template's contents (used by `init --print`). */
