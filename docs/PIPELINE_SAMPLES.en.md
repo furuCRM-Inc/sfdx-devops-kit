@@ -1,24 +1,24 @@
-# パイプラインサンプル集
+# Pipeline samples
 
-そのままコピーして使える構成例と、それぞれが実際に生成する出力です。すべて
-`validate` と `plan` を通しています。
+[日本語版](PIPELINE_SAMPLES.md)
 
-[English version](PIPELINE_SAMPLES.en.md)
+Complete, copy-ready configurations for common team shapes, plus the output each
+one produces. Every sample below was run through `validate` and `plan`.
 
-- [1. 最小構成 — Sandbox 1 つ](#1-最小構成--sandbox-1-つ)
-- [2. 標準構成 — dev → ST → UAT → 本番](#2-標準構成--dev--st--uat--本番)
-- [3. 多環境 — 開発者別 sandbox・SIT・pre-prod・研修](#3-多環境--開発者別-sandboxsitpre-prod研修)
-- [4. リリース manifest 駆動の本番デプロイ](#4-リリース-manifest-駆動の本番デプロイ)
-- [5. 厳格な品質ゲート](#5-厳格な品質ゲート)
-- [6. AI も Backlog も使わない — パイプラインのみ](#6-ai-も-backlog-も使わない--パイプラインのみ)
-- [実行結果の見え方](#実行結果の見え方)
-- [CI の構成](#ci-の構成)
+- [1. Minimal — one sandbox](#1-minimal--one-sandbox)
+- [2. Standard — dev → ST → UAT → production](#2-standard--dev--st--uat--production)
+- [3. Many environments — per-developer sandboxes, SIT, pre-prod, training](#3-many-environments--per-developer-sandboxes-sit-pre-prod-training)
+- [4. Release-manifest driven production](#4-release-manifest-driven-production)
+- [5. Strict quality gates](#5-strict-quality-gates)
+- [6. No AI, no Backlog — pipeline only](#6-no-ai-no-backlog--pipeline-only)
+- [What a run looks like](#what-a-run-looks-like)
+- [What CI looks like](#what-ci-looks-like)
 
 ---
 
-## 1. 最小構成 — Sandbox 1 つ
+## 1. Minimal — one sandbox
 
-役に立つ最小の設定です。検証・テスト・デプロイだけを行います。
+The smallest configuration that does something useful: validate, test, deploy.
 
 ```yaml
 version: "1.0"
@@ -48,10 +48,10 @@ backlog_integration:
 
 ---
 
-## 2. 標準構成 — dev → ST → UAT → 本番
+## 2. Standard — dev → ST → UAT → production
 
-多くのチームが落ち着く形です。実装は個人 Dev Sandbox、CI は ST、受入は UAT、
-本番は GitHub の承認付き環境の背後に置きます。
+The shape most teams land on. Personal dev sandbox for building, ST for CI,
+UAT for acceptance, production behind a GitHub environment approval.
 
 ```yaml
 version: "1.0"
@@ -64,7 +64,7 @@ environments:
   st:
     alias: "STSandbox"
     type: "sandbox"
-    is_test_target: true # CI の検証と E2E の実行先
+    is_test_target: true # CI validates and runs E2E here
   uat:
     alias: "UATSandbox"
     type: "sandbox"
@@ -102,20 +102,21 @@ backlog_integration:
     closed: "完了"
 ```
 
-どの環境へデプロイするかは、設定の編集ではなくフラグで切り替えます。
+Deploying to any of them is a flag, not an edit:
 
 ```bash
-npx sfdx-devops-kit run --env dev        # 自分の sandbox
-npx sfdx-devops-kit run --env uat        # 受入
-npx sfdx-devops-kit run --env prod       # リリース（先に validate を！）
+npx sfdx-devops-kit run --env dev        # your own sandbox
+npx sfdx-devops-kit run --env uat        # acceptance
+npx sfdx-devops-kit run --env prod       # release (validate first!)
 ```
 
 ---
 
-## 3. 多環境 — 開発者別 sandbox・SIT・pre-prod・研修
+## 3. Many environments — per-developer sandboxes, SIT, pre-prod, training
 
-**環境数に上限はありません。** `environments` は単なるマップで、キーを追加すれば
-Secret 名と `--env` の対象がそのまま増えます。以下は 10 環境の例で、そのまま検証を通ります。
+**There is no limit on the number of environments.** `environments` is an open
+map: add a key, get a secret name and a `--env` target. This sample declares ten
+and validates cleanly.
 
 ```yaml
 version: "1.0"
@@ -156,10 +157,10 @@ environments:
     alias: "Production"
     type: "production"
     deploy_manifest: "manifest/package.xml"
-    auth_secret: "SF_PRODUCTION_AUTH_URL_ROTATED" # 導出名を上書き
+    auth_secret: "SF_PRODUCTION_AUTH_URL_ROTATED" # override the derived name
 ```
 
-この設定に対する `validate` の実際の出力:
+`validate` output for exactly this file:
 
 ```text
 config: sfdx-pipeline.config.yml
@@ -178,15 +179,15 @@ Required GitHub Secrets:
   SF_PRODUCTION_AUTH_URL_ROTATED → Production (production)
 ```
 
-規模に関わらず守られる制約:
+Rules that still apply at any scale:
 
-- `is_test_target: true` は**ちょうど 1 つ**（CI の既定ターゲット）
-- デプロイセレクタは 1 環境に **1 つだけ**（`deploy_manifest` / `source_dir` /
-  `metadata` の併用は Salesforce CLI が拒否します）
-- キーは `SF_<KEY>_AUTH_URL` になります（`pre-prod` → `SF_PRE_PROD_AUTH_URL`）。
-  ローテーションや共有時は `auth_secret` で上書きできます
+- **Exactly one** environment sets `is_test_target: true` (CI's default target).
+- **One deployment selector** per environment (`deploy_manifest`, `source_dir` or
+  `metadata` — never two; the Salesforce CLI rejects the combination).
+- A key becomes `SF_<KEY>_AUTH_URL` (`pre-prod` → `SF_PRE_PROD_AUTH_URL`); override
+  with `auth_secret` when you rotate or share a secret.
 
-任意の環境を対象に実行:
+Run against any of them:
 
 ```bash
 npx sfdx-devops-kit plan --env dev_carol
@@ -196,9 +197,10 @@ gh workflow run sfdx-ci-cd.yml -f environment=sit
 
 ---
 
-## 4. リリース manifest 駆動の本番デプロイ
+## 4. Release-manifest driven production
 
-`main` と `develop` の差分から生成した manifest で、リリース内容だけをデプロイします。
+Deploy only what a release contains, generated from the diff between `main` and
+`develop`:
 
 ```yaml
 environments:
@@ -209,32 +211,32 @@ environments:
 ```
 
 ```bash
-# リリース内容を確定
+# Freeze the release contents
 npx sfdx-devops-kit deliverables --base origin/main --head origin/develop \
   --format package-xml --out manifest/package.xml
 
-# リリース前に本番で検証
+# Validate against production before releasing
 npx sfdx-devops-kit run validate_deploy unit_test --env prod
 ```
 
-削除は `package.xml` では表現できません。生成された manifest にもその旨がコメントで
-入ります（`destructiveChanges.xml` が必要です）。
+Deletions cannot ride in `package.xml`; the generated manifest says so in a
+comment, and they need `destructiveChanges.xml`.
 
 ---
 
-## 5. 厳格な品質ゲート
+## 5. Strict quality gates
 
-そこまで到達したコードベース、あるいは規制上必要な場合に。
+For a codebase that has earned it — or a regulated one that requires it:
 
 ```yaml
 pipeline_settings:
   code_analyzer:
     enabled: true
-    severity_threshold: 4 # Moderate だけでなく Low 以上で失敗
+    severity_threshold: 4 # fail on Low and worse, not just Moderate
     rule_selector: "Recommended:Security"
   unit_test:
     enabled: true
-    test_level: "RunAllTestsInOrg" # local だけでなく全テスト
+    test_level: "RunAllTestsInOrg" # every test, not just local
     coverage_threshold: 90
   e2e_test:
     enabled: true
@@ -245,7 +247,7 @@ pipeline_settings:
     command: "npx newman run tests/integration/regression.json --env-var baseUrl=$E2E_BASE_URL"
 ```
 
-特定リリースで指定テストのみを実行する場合:
+And for a specific release that must only run named tests:
 
 ```yaml
 unit_test:
@@ -257,28 +259,28 @@ unit_test:
   coverage_threshold: 75
 ```
 
-`tests` が空の `RunSpecifiedTests` は `validate` が拒否するため、中途半端な設定には
-なりません。
+`validate` rejects `RunSpecifiedTests` with an empty `tests` list, so this cannot
+be half-configured.
 
 ---
 
-## 6. AI も Backlog も使わない — パイプラインのみ
+## 6. No AI, no Backlog — pipeline only
 
-単なる CI/CD パイプラインとしても使えます。
+The kit works as a plain CI/CD pipeline. Turn the rest off:
 
 ```yaml
 ai_assist:
   rtk_sf:
-    enabled: false # documentation ステージがスキップされます
+    enabled: false # skips the documentation stage
 
 pipeline_settings:
   documentation: { enabled: false }
 
 backlog_integration:
-  project_key: "" # 課題キーは「解決不可」と報告され、推測はされません
+  project_key: "" # ticket resolution is then reported as unavailable, not guessed
 ```
 
-`plan` が理由を明示するため、無効化が暗黙にならないのが利点です。
+`plan` states why each stage is inactive, so nothing is silently off:
 
 ```text
 · documentation     Generate system documentation (rtk-sf) — skipped: ai_assist.rtk_sf.enabled is false
@@ -286,10 +288,10 @@ backlog_integration:
 
 ---
 
-## 実行結果の見え方
+## What a run looks like
 
-scratch org に対する実際の実行です。Apex テストは検証デプロイの中で走り、
-カバレッジゲートはその結果を読みます。
+A real run against a scratch org, with the Apex tests executing inside the
+validation deploy and the coverage gate reading that result:
 
 ```text
 $ npx sfdx-devops-kit run --skip e2e_test
@@ -313,7 +315,7 @@ $ npx sfdx-devops-kit run --skip e2e_test
 ✔ pipeline passed — 6/6 stage(s) passed, coverage 100%
 ```
 
-失敗時は、終了コードではなく**原因**を提示します。
+Failures name the cause rather than an exit code:
 
 ```text
 ✖ unit_test: Coverage 68% is below the 75% threshold
@@ -329,7 +331,7 @@ $ npx sfdx-devops-kit run --skip e2e_test
   so the code was not analyzed: Could not locate Java v11.0.0+.
 ```
 
-org に触れずに内容だけ確認:
+Preview without touching an org:
 
 ```text
 $ npx sfdx-devops-kit run --dry-run --env uat
@@ -344,20 +346,20 @@ $ npx sfdx-devops-kit run --dry-run --env uat
 
 ---
 
-## CI の構成
+## What CI looks like
 
-生成されるワークフローは、同じ設定から各ステップを導出します。
+The generated workflow derives its steps from the same config.
 
-| ジョブ         | 実行条件              | 内容                                                                                    |
-| -------------- | --------------------- | --------------------------------------------------------------------------------------- |
-| `plan`         | 常時                  | `validate` 実行後、plan をステップサマリへ出力し、後続ジョブ用の `enabled` マップを公開 |
-| `quality`      | 常時                  | ESLint・Prettier・Code Analyzer（Java 製エンジン用に JDK も設定）                       |
-| `validate`     | 常時                  | 対象 org へ認証し、dry-run デプロイとカバレッジゲート                                   |
-| `deploy`       | PR では**実行しない** | 本デプロイ、結合テスト、E2E、ドキュメント生成                                           |
-| `deliverables` | PR のみ               | メタデータ一覧と `package.xml` を成果物として添付                                       |
+| Job            | Runs when                | Contents                                                                                    |
+| -------------- | ------------------------ | ------------------------------------------------------------------------------------------- |
+| `plan`         | always                   | `validate`, then publishes the plan to the step summary and an `enabled` map for later jobs |
+| `quality`      | always                   | ESLint, Prettier, Code Analyzer (with a JDK for the Java engines)                           |
+| `validate`     | always                   | Authorizes the target org, dry-run deploy, coverage gate                                    |
+| `deploy`       | **not** on pull requests | Real deploy, integration, E2E, documentation                                                |
+| `deliverables` | pull requests            | Metadata list and `package.xml` as artifacts                                                |
 
-任意ステップはすべて 1 つの式でゲートされるため、設定で無効化すればワークフローを
-触らずに CI からも消えます。
+Every optional step is gated by one expression, so disabling a stage in the
+config disables it in CI without touching the workflow:
 
 ```yaml
 - name: Salesforce Code Analyzer
@@ -365,14 +367,14 @@ $ npx sfdx-devops-kit run --dry-run --env uat
   run: npx sfdx-devops-kit run code_analyzer
 ```
 
-org の資格情報は、plan が解決した名前で参照します（ハードコードしません）。
+Org credentials are read by the name the plan resolves, never hardcoded:
 
 ```yaml
 env:
   SFDX_AUTH_URL: ${{ secrets[needs.plan.outputs.auth_secret] }}
 ```
 
-環境を指定した手動実行:
+Trigger a specific environment by hand:
 
 ```bash
 gh workflow run sfdx-ci-cd.yml -f environment=uat

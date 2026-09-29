@@ -3,7 +3,7 @@
 The full flow from ticket to release, with the commands and output you actually
 see. Examples use a fictional project `PROJ` (discount approval on Opportunity).
 Ready-made configurations, including a ten-environment setup, are in
-[pipeline samples](PIPELINE_SAMPLES.md).
+[pipeline samples](PIPELINE_SAMPLES.en.md).
 
 日本語版：[OPERATIONS_MANUAL.md](OPERATIONS_MANUAL.md)
 
@@ -258,7 +258,7 @@ A failure names the component and the org's own message:
 1. All CI jobs green, coverage acceptable.
 2. AI review findings resolved, or deferred with a stated reason.
 3. The deliverables list matches the ticket's scope — no stray profile diffs.
-4. The [review checklist](../knowledge/sfdx/review-checklist.md).
+4. The [review checklist](../templates/knowledge/sfdx/review-checklist.md).
 
 Approve and merge to `develop` (squash recommended).
 

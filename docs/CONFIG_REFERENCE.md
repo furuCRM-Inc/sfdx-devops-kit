@@ -1,21 +1,22 @@
-# Configuration reference
+# 設定リファレンス
 
-Every key in `sfdx-pipeline.config.yml`. Run `npx sfdx-devops-kit validate` after
-any edit — it reports the YAML path of anything wrong and lists the GitHub Secrets
-the environments need.
+`sfdx-pipeline.config.yml` の全キーです。編集後は必ず `npx sfdx-devops-kit validate`
+を実行してください。問題のある YAML パスと、必要な GitHub Secrets を出力します。
+
+[English version](CONFIG_REFERENCE.en.md)
 
 ---
 
-## Top level
+## トップレベル
 
-| Key                   | Type   | Default        | Notes                             |
-| --------------------- | ------ | -------------- | --------------------------------- |
-| `version`             | string | `"1.0"`        | Only `1.0` is supported today     |
-| `project_name`        | string | directory name | Appears in generated documents    |
-| `environments`        | map    | —              | At least one is required          |
-| `pipeline_settings`   | map    | see below      | Stage settings                    |
-| `ai_assist`           | map    | see below      | rtk-sf integration                |
-| `backlog_integration` | map    | see below      | Ticket keys, statuses, MCP server |
+| キー                  | 型     | 既定値         | 説明                               |
+| --------------------- | ------ | -------------- | ---------------------------------- |
+| `version`             | string | `"1.0"`        | 現在は `1.0` のみ対応              |
+| `project_name`        | string | ディレクトリ名 | 生成ドキュメントに表示されます     |
+| `environments`        | map    | —              | 最低 1 つ必要                      |
+| `pipeline_settings`   | map    | 下記参照       | ステージ設定                       |
+| `ai_assist`           | map    | 下記参照       | rtk-sf 連携                        |
+| `backlog_integration` | map    | 下記参照       | 課題キー・ステータス・MCP サーバー |
 
 ---
 
@@ -31,92 +32,96 @@ environments:
     auth_secret: "SF_CUSTOM_SECRET"
 ```
 
-| Key               | Type          | Required | Notes                                                                                                    |
-| ----------------- | ------------- | -------- | -------------------------------------------------------------------------------------------------------- |
-| `alias`           | string        | yes      | Org alias or username as the Salesforce CLI knows it                                                     |
-| `type`            | enum          | yes      | `sandbox`, `production`, `scratch`, `developer`                                                          |
-| `is_test_target`  | bool          | no       | The default target for CI validation and E2E. **Exactly one** environment may set it; production may not |
-| `deploy_manifest` | string        | no       | `--manifest` value                                                                                       |
-| `source_dir`      | string        | no       | `--source-dir` value                                                                                     |
-| `metadata`        | string / list | no       | `--metadata` value(s)                                                                                    |
-| `auth_secret`     | string        | no       | Overrides the derived secret name                                                                        |
+| キー              | 型            | 必須 | 説明                                                                                  |
+| ----------------- | ------------- | ---- | ------------------------------------------------------------------------------------- |
+| `alias`           | string        | ○    | Salesforce CLI が認識している org 別名またはユーザー名                                |
+| `type`            | enum          | ○    | `sandbox` / `production` / `scratch` / `developer`                                    |
+| `is_test_target`  | bool          | —    | CI の検証・E2E の既定ターゲット。**ちょうど 1 つ**の環境のみ設定可、production は不可 |
+| `deploy_manifest` | string        | —    | `--manifest` の値                                                                     |
+| `source_dir`      | string        | —    | `--source-dir` の値                                                                   |
+| `metadata`        | string / list | —    | `--metadata` の値                                                                     |
+| `auth_secret`     | string        | —    | 導出される Secret 名を上書き                                                          |
 
-**Only one deployment selector per environment.** `sf project deploy start`
-rejects `--manifest`, `--source-dir` and `--metadata` in combination, so declaring
-two is a validation error rather than a failed deployment. With none, the project's
-default package directories are deployed.
+**デプロイセレクタは 1 環境につき 1 つだけ。** `sf project deploy start` は
+`--manifest` / `--source-dir` / `--metadata` の併用を拒否するため、2 つ書いた時点で
+検証エラーになります（デプロイ失敗を待ちません）。いずれも無い場合は、プロジェクトの
+既定パッケージディレクトリがデプロイされます。
 
-Secret names are derived as `SF_<KEY>_AUTH_URL` (`st` → `SF_ST_AUTH_URL`,
-`pre-prod` → `SF_PRE_PROD_AUTH_URL`).
+Secret 名は `SF_<KEY>_AUTH_URL` として導出されます（`st` → `SF_ST_AUTH_URL`、
+`pre-prod` → `SF_PRE_PROD_AUTH_URL`）。
+
+**環境数に上限はありません。** 開発者別 sandbox・SIT・pre-prod・研修 org を含む
+10 環境構成の実例は [パイプラインサンプル](PIPELINE_SAMPLES.md) を参照してください。
 
 ---
 
 ## `pipeline_settings`
 
-Stages run in this order. Every stage takes `enabled` (bool, required).
+以下の順に実行されます。各ステージは `enabled`（bool、必須）を取ります。
 
-### `lint`, `prettier`
+### `lint` / `prettier`
 
-| Key             | Default                             | Notes                                     |
-| --------------- | ----------------------------------- | ----------------------------------------- |
-| `command`       | `npm run lint` / `npm run prettier` | Replace with your own                     |
-| `fail_on_error` | `true`                              | `false` records the failure and continues |
+| キー            | 既定値                              | 説明                           |
+| --------------- | ----------------------------------- | ------------------------------ |
+| `command`       | `npm run lint` / `npm run prettier` | 任意のコマンドに置き換え可     |
+| `fail_on_error` | `true`                              | `false` なら失敗を記録して継続 |
 
 ### `code_analyzer`
 
-| Key                  | Default                      | Notes                                                                               |
-| -------------------- | ---------------------------- | ----------------------------------------------------------------------------------- |
-| `engine`             | `code-analyzer`              | `code-analyzer` (v5, `sf code-analyzer run`) or `scanner` (legacy `sf scanner run`) |
-| `rule_selector`      | `Recommended`                | v5 selector: engine, severity, tag, or a combination                                |
-| `pmd_rule_set`       | `""`                         | Legacy engine only → `--pmdconfig`                                                  |
-| `config_file`        | unset                        | v5 → `--config-file` (a `code-analyzer.yml`)                                        |
-| `severity_threshold` | `3`                          | Fail at this severity **or worse**. 1 Critical, 2 High, 3 Moderate, 4 Low, 5 Info   |
-| `target`             | `force-app`                  | v5 `--workspace`, legacy `--target`                                                 |
-| `output_file`        | `code-analyzer-results.json` | Parsed for the gate and uploaded by CI                                              |
+| キー                 | 既定値                       | 説明                                                                                     |
+| -------------------- | ---------------------------- | ---------------------------------------------------------------------------------------- |
+| `engine`             | `code-analyzer`              | `code-analyzer`（v5、`sf code-analyzer run`）または `scanner`（legacy `sf scanner run`） |
+| `rule_selector`      | `Recommended`                | v5 のセレクタ（エンジン・深刻度・タグの組み合わせ）                                      |
+| `pmd_rule_set`       | `""`                         | legacy エンジンのみ → `--pmdconfig`                                                      |
+| `config_file`        | 未設定                       | v5 → `--config-file`（`code-analyzer.yml`）                                              |
+| `severity_threshold` | `3`                          | **この深刻度以上**で失敗。1 Critical / 2 High / 3 Moderate / 4 Low / 5 Info              |
+| `target`             | `force-app`                  | v5 は `--workspace`、legacy は `--target`                                                |
+| `output_file`        | `code-analyzer-results.json` | ゲート判定に解析され、CI では成果物として保存                                            |
 
-The PMD, CPD and SFGE engines are Java-based. Without a JDK 11+ they fail to
-start, and the kit reports that as an infrastructure failure rather than as code
-findings. `rule_selector: eslint` needs no Java.
+PMD・CPD・SFGE は Java 製エンジンです。JDK 11 以上が無いと起動に失敗し、キットは
+それを「コード違反」ではなく**環境問題**として報告します。`rule_selector: eslint`
+なら Java 不要です。
 
-### `validate_deploy`, `deploy`
+### `validate_deploy` / `deploy`
 
-Only `enabled`. Commands are derived from the environment and `unit_test`:
+`enabled` のみ。コマンドは環境と `unit_test` から導出されます。
 
 ```text
-sf project deploy start --json --target-org <alias> [<selector>] --test-level <level> [--dry-run] --wait 60
+sf project deploy start --json --target-org <alias> [<セレクタ>] --test-level <level> [--dry-run] --wait 60
 ```
 
-CI runs `deploy` only when the event is not a pull request, so a fork PR cannot
-deploy into an org.
+CI は pull request 以外のイベントでのみ `deploy` を実行します（フォークからの PR が
+org にデプロイできないようにするため）。
 
 ### `unit_test`
 
-| Key                  | Default         | Notes                                                                 |
-| -------------------- | --------------- | --------------------------------------------------------------------- |
-| `test_level`         | `RunLocalTests` | `NoTestRun`, `RunSpecifiedTests`, `RunLocalTests`, `RunAllTestsInOrg` |
-| `tests`              | `[]`            | Required when `test_level` is `RunSpecifiedTests`                     |
-| `coverage_threshold` | `75`            | 0–100                                                                 |
+| キー                 | 既定値          | 説明                                                                     |
+| -------------------- | --------------- | ------------------------------------------------------------------------ |
+| `test_level`         | `RunLocalTests` | `NoTestRun` / `RunSpecifiedTests` / `RunLocalTests` / `RunAllTestsInOrg` |
+| `tests`              | `[]`            | `RunSpecifiedTests` のとき必須                                           |
+| `coverage_threshold` | `75`            | 0〜100                                                                   |
 
-This stage runs no commands: Apex tests execute inside the validation deploy, and
-the gate reads that result, so tests are not run twice. Coverage that cannot be
-measured (for example `NoTestRun`) **fails** the gate rather than passing quietly.
+このステージはコマンドを実行しません。Apex テストは検証デプロイの中で実行され、
+ゲートはその結果を読むため、テストは 1 回だけ走ります。カバレッジを測定できない場合
+（例: `NoTestRun`）は、黙って合格させず**失敗**させます。
 
-### `integration_test`, `e2e_test`
+### `integration_test` / `e2e_test`
 
-| Key       | Default                 | Notes                        |
-| --------- | ----------------------- | ---------------------------- |
-| `tool`    | `newman` / `playwright` | Or `custom`                  |
-| `command` | tool default            | Required when `tool: custom` |
+| キー      | 既定値                  | 説明                      |
+| --------- | ----------------------- | ------------------------- |
+| `tool`    | `newman` / `playwright` | または `custom`           |
+| `command` | ツール既定              | `tool: custom` のとき必須 |
 
 ### `documentation`
 
-| Key          | Default  | Notes                                                   |
-| ------------ | -------- | ------------------------------------------------------- |
-| `tool`       | `rtk-sf` | The only wired tool                                     |
-| `doc_type`   | `all`    | `all`, `function_matrix`, `sequence_diagrams`, `erd`, … |
-| `output_dir` | `docs`   | Where the document set is written                       |
+| キー         | 既定値   | 説明                                                         |
+| ------------ | -------- | ------------------------------------------------------------ |
+| `tool`       | `rtk-sf` | 対応しているのはこれのみ                                     |
+| `doc_type`   | `all`    | `all` / `function_matrix` / `sequence_diagrams` / `erd` など |
+| `output_dir` | `docs`   | 生成先                                                       |
 
-Skipped when rtk-sf is unavailable, unless `ai_assist.rtk_sf.required` is true.
+rtk-sf が利用できない場合はスキップされます（`ai_assist.rtk_sf.required: true` を
+指定した場合を除く）。
 
 ---
 
@@ -132,13 +137,13 @@ ai_assist:
     register_mcp: true
 ```
 
-| Key              | Default   | Notes                                                            |
-| ---------------- | --------- | ---------------------------------------------------------------- |
-| `enabled`        | `true`    | Integrated by default                                            |
-| `required`       | `false`   | `true` makes a missing rtk-sf fail the build instead of skipping |
-| `python`         | `python3` | Interpreter that has rtk-sf installed                            |
-| `index_on_setup` | `true`    | `setup-project.sh` runs `rtk_sf index`                           |
-| `register_mcp`   | `true`    | `setup-project.sh` registers the MCP server                      |
+| キー             | 既定値    | 説明                                                |
+| ---------------- | --------- | --------------------------------------------------- |
+| `enabled`        | `true`    | 既定で統合                                          |
+| `required`       | `false`   | `true` にすると未導入時にスキップではなくビルド失敗 |
+| `python`         | `python3` | rtk-sf を導入した Python インタプリタ               |
+| `index_on_setup` | `true`    | `setup-project.sh` が `rtk_sf index` を実行         |
+| `register_mcp`   | `true`    | `setup-project.sh` が MCP サーバーを登録            |
 
 ---
 
@@ -153,6 +158,7 @@ backlog_integration:
     review_ready: "処理済み"
     closed: "完了"
   status_ids: {}
+  comment_format: "markdown"
   mcp:
     server_name: "backlog"
     runtime: "docker"
@@ -161,40 +167,41 @@ backlog_integration:
   deliverables:
     post_on_review: true
     include_package_xml: true
+    include_pr_link: true
     include_non_metadata: true
 ```
 
-| Key                                 | Default                  | Notes                                                                                |
-| ----------------------------------- | ------------------------ | ------------------------------------------------------------------------------------ |
-| `project_key`                       | `""`                     | A key from another project is refused, so a stray match cannot move the wrong ticket |
-| `branch_pattern`                    | `([A-Z][A-Z0-9_]*-\d+)`  | Matched case-insensitively against the branch name                                   |
-| `status_mapping.*`                  | 処理中 / 処理済み / 完了 | All three are required                                                               |
-| `comment_format`                    | `markdown`               | `markdown` or `backlog`; must match the project's text formatting rule               |
-| `status_ids`                        | `{}`                     | Status **name → numeric id**, for custom statuses                                    |
-| `mcp.server_name`                   | `backlog`                | Name in `.mcp.json`                                                                  |
-| `mcp.runtime`                       | `docker`                 | `docker` or `npx`                                                                    |
-| `mcp.toolsets`                      | `space,project,issue`    | `--enable-toolsets` value                                                            |
-| `mcp.tool_prefix`                   | `""`                     | Set when the server runs with `--prefix`                                             |
-| `deliverables.post_on_review`       | `true`                   | `/sfdx-review` posts the component list                                              |
-| `deliverables.include_package_xml`  | `true`                   | Include a per-ticket manifest                                                        |
-| `deliverables.include_pr_link`      | `true`                   | Add the PR URL (via `gh`, falling back to a compare link)                            |
-| `deliverables.include_non_metadata` | `true`                   | List test/CI/doc changes in a collapsed section                                      |
+| キー                                | 既定値                   | 説明                                                               |
+| ----------------------------------- | ------------------------ | ------------------------------------------------------------------ |
+| `project_key`                       | `""`                     | 他プロジェクトのキーは拒否されるため、誤ったチケットを動かしません |
+| `branch_pattern`                    | `([A-Z][A-Z0-9_]*-\d+)`  | ブランチ名に対して大文字小文字を区別せず照合                       |
+| `status_mapping.*`                  | 処理中 / 処理済み / 完了 | 3 つとも必須                                                       |
+| `status_ids`                        | `{}`                     | ステータス**名 → 数値 ID**。カスタムステータス用                   |
+| `comment_format`                    | `markdown`               | `markdown` または `backlog`。プロジェクトの表示形式に合わせる      |
+| `mcp.server_name`                   | `backlog`                | `.mcp.json` での登録名                                             |
+| `mcp.runtime`                       | `docker`                 | `docker` または `npx`                                              |
+| `mcp.toolsets`                      | `space,project,issue`    | 有効化するトールセット                                             |
+| `mcp.tool_prefix`                   | `""`                     | サーバーを `--prefix` 付きで起動している場合に指定                 |
+| `deliverables.post_on_review`       | `true`                   | `/sfdx-review` が成果物一覧を投稿                                  |
+| `deliverables.include_package_xml`  | `true`                   | チケット単位の manifest を含める                                   |
+| `deliverables.include_pr_link`      | `true`                   | PR の URL を含める（`gh` で解決、未作成時は比較リンク）            |
+| `deliverables.include_non_metadata` | `true`                   | テスト・CI・ドキュメントの変更を折りたたみで併記                   |
 
-### Status ids
+### ステータス ID について
 
-[nulab/backlog-mcp-server](https://github.com/nulab/backlog-mcp-server) exposes no
-status-listing tool (verified against v0.20.4: 63 tools, none for statuses), so a
-status name cannot be resolved to an id at runtime. Backlog's built-in statuses
-have fixed ids in every project and are resolved automatically:
+[nulab/backlog-mcp-server](https://github.com/nulab/backlog-mcp-server) には
+**ステータス一覧を返すツールが存在しません**（v0.20.4 の 63 ツールを実測して確認）。
+そのため、ステータス名から ID を実行時に解決できません。Backlog 標準のステータスは
+全プロジェクト共通の固定 ID を持ち、自動で解決されます。
 
-| Name                 | id  |
+| 名称                 | ID  |
 | -------------------- | --- |
 | 未対応 / Open        | 1   |
 | 処理中 / In Progress | 2   |
 | 処理済み / Resolved  | 3   |
 | 完了 / Closed        | 4   |
 
-A project with custom statuses lists them explicitly:
+カスタムステータスを使うプロジェクトは明示指定してください。
 
 ```yaml
 status_ids:
@@ -202,24 +209,30 @@ status_ids:
   リリース待ち: 6
 ```
 
-`validate` warns about any mapped status that is neither built-in nor listed. In
-that case the skills post their comment and report that the status was left
-unchanged — they never guess an id, because a wrong one moves the ticket to an
-unrelated state.
+標準にもなく `status_ids` にも無い名称は `validate` が警告します。その場合スキルは
+コメントだけ投稿し、「ステータスは変更しなかった」と報告します。**ID を推測することは
+ありません** — 誤った ID は無関係な状態へチケットを動かしてしまうためです。
 
-### Credentials
+### `--enable-toolsets` の注意
 
-`BACKLOG_DOMAIN` and `BACKLOG_API_KEY` live in the environment and are passed
-through by `.mcp.json`. They never belong in this file or in the repository.
+トールセットは**フラグを繰り返して**指定します。公式ドキュメントにあるカンマ区切り
+（`--enable-toolsets space,project,issue`）は v0.20.4 では**ツールが 0 個**になり、
+連携が無言で機能しなくなります。`.mcp.json` テンプレートは繰り返し形式を使っており、
+`doctor` はカンマ形式を検出して失敗させます。
+
+### 資格情報
+
+`BACKLOG_DOMAIN` と `BACKLOG_API_KEY` は環境変数に置き、`.mcp.json` が受け渡します。
+この設定ファイルやリポジトリに書いてはいけません。
 
 ---
 
-## Checking the resolved configuration
+## 解決結果の確認
 
 ```bash
-npx sfdx-devops-kit validate          # errors, warnings, required secrets
-npx sfdx-devops-kit plan --env st     # the stages, gates and exact commands
-npx sfdx-devops-kit plan --json       # machine-readable, including `enabled`
-npx sfdx-devops-kit backlog --phase review_ready   # ticket, statusId, MCP calls
-npx sfdx-devops-kit doctor            # toolchain, Java, rtk-sf, Backlog wiring
+npx sfdx-devops-kit validate          # エラー・警告・必要な Secrets
+npx sfdx-devops-kit plan --env st     # ステージ・ゲート・実行コマンド
+npx sfdx-devops-kit plan --json       # 機械可読（`enabled` マップを含む）
+npx sfdx-devops-kit backlog --phase review_ready   # 課題キー・statusId・MCP 呼び出し
+npx sfdx-devops-kit doctor            # ツールチェーン・Java・rtk-sf・Backlog 連携
 ```

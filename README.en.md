@@ -5,7 +5,7 @@ project and get CI/CD, quality gates, AI-assisted review and per-ticket metadata
 records — configured in `sfdx-pipeline.config.yml`, not scattered across workflow
 files.
 
-[日本語 README](README.md) · [Operations manual](docs/OPERATIONS_MANUAL.en.md) · [Pipeline samples](docs/PIPELINE_SAMPLES.md) · [Configuration reference](docs/CONFIG_REFERENCE.md)
+[日本語 README](README.md) · [Operations manual](docs/OPERATIONS_MANUAL.en.md) · [Pipeline samples](docs/PIPELINE_SAMPLES.en.md) · [Configuration reference](docs/CONFIG_REFERENCE.en.md)
 
 ```bash
 npx sfdx-devops-kit init .      # scaffold pipeline, CI, Claude skills, knowledge base
@@ -277,7 +277,7 @@ set `ai_assist.rtk_sf.required: true` to make it mandatory instead.
 
 Step-by-step commands and real output are in the
 [operations manual](docs/OPERATIONS_MANUAL.en.md); ready-made configurations are in
-[pipeline samples](docs/PIPELINE_SAMPLES.md).
+[pipeline samples](docs/PIPELINE_SAMPLES.en.md).
 
 ```mermaid
 flowchart LR

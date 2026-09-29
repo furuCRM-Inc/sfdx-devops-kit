@@ -415,7 +415,7 @@ CI が落ちた場合の読み方：
 1. CI 4 ジョブすべて成功（特に `validate` のカバレッジ）
 2. AI レビューコメントの指摘が解消済み、または妥当な理由で見送り
 3. 成果物一覧がチケットのスコープと一致（無関係な profile 差分などが無いか）
-4. [レビューチェックリスト](../knowledge/sfdx/review-checklist.md) の項目
+4. [レビューチェックリスト](../templates/knowledge/sfdx/review-checklist.md) の項目
 
 問題なければ Approve して `develop` へマージします（Squash 推奨）。
 
