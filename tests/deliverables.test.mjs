@@ -290,3 +290,37 @@ test("the default dialect stays Markdown", () => {
   const body = renderMarkdown(deriveDeliverables([]), { ticket: "PROJ-9" });
   assert.match(body, /^## 成果物/m);
 });
+
+test("a local git revision is not shown as the diff range on a ticket", () => {
+  // "HEAD~2...HEAD" is meaningless to someone reading the ticket, and it moves.
+  const body = renderMarkdown(deriveDeliverables([]), {
+    ticket: "PROJ-1",
+    branch: "feature/PROJ-1-x",
+    base: "HEAD~2",
+    head: "HEAD",
+  });
+  assert.ok(!body.includes("HEAD~2"), "a revision must not appear as a range");
+  assert.ok(!body.includes("差分範囲"), "the line is omitted rather than shown wrong");
+});
+
+test("a branch range is shown, with the branch name as the head", () => {
+  const body = renderMarkdown(deriveDeliverables([]), {
+    ticket: "PROJ-1",
+    branch: "feature/PROJ-1-x",
+    base: "origin/develop",
+    head: "HEAD",
+  });
+  assert.match(body, /差分範囲: `origin\/develop\.\.\.feature\/PROJ-1-x`/);
+});
+
+test("the Backlog dialect applies the same rule", () => {
+  const revision = renderMarkdown(deriveDeliverables([]), {
+    ticket: "PROJ-1", base: "abc1234", format: "backlog",
+  });
+  assert.ok(!revision.includes("差分範囲"));
+
+  const branches = renderMarkdown(deriveDeliverables([]), {
+    ticket: "PROJ-1", base: "main", head: "release/2026-10", format: "backlog",
+  });
+  assert.match(branches, /差分範囲: main\.\.\.release\/2026-10/);
+});

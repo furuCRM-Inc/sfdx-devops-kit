@@ -21,7 +21,12 @@ mapping and `status_ids`.
 2. `get_issue_types({ projectKey: "<project_key>" })` → pick the type the work is
    (e.g. 課題 / タスク / バグ) → `issueTypeId`
 3. `get_priorities()` → pick a priority → `priorityId`
-4. `add_issue({ projectId, summary, issueTypeId, priorityId, description })`
+4. `get_myself()` → `id` for `assigneeId`, unless the work is for someone else
+   (then `get_project_users({ projectKey })` and pick them)
+5. `add_issue({ projectId, summary, issueTypeId, priorityId, description, assigneeId })`
+
+Always set an assignee. An unassigned ticket has no owner in Backlog's filters and
+board views, so it disappears from the very lists the team works from.
 
 Write the description so an agent can implement from it without asking:
 
@@ -66,8 +71,14 @@ review and deliverables steps both resolve the ticket from the branch name.
 ## C. Move the ticket to "in progress"
 
 ```text
-update_issue({ issueKey: "PROJ-142", statusId: <id for status_mapping.in_progress> })
+update_issue({
+  issueKey: "PROJ-142",
+  statusId: <id for status_mapping.in_progress>,
+  assigneeId: <your user id from get_myself>
+})
 ```
+
+Set the assignee here too when picking up a ticket someone else filed.
 
 Get the id from `npx sfdx-devops-kit backlog --phase in_progress`. **Never guess
 a status id.** This server exposes no status-listing tool, so ids come from

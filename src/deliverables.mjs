@@ -167,6 +167,24 @@ function classifyNonMetadata(parts) {
   return "Other";
 }
 
+/**
+ * The diff range, but only when it means something to someone reading the ticket.
+ *
+ * `--base HEAD~2` is convenient locally and useless on a ticket: it is relative
+ * to a working copy and changes as commits land. Branch names are shown; git
+ * revisions are omitted rather than printed as false precision.
+ */
+function readableRange(context) {
+  const base = String(context.base ?? "").trim();
+  if (!base) return "";
+  const head = String(context.head ?? "HEAD").trim();
+
+  const revision = (ref) => !ref || /[~^:]|^HEAD$|^[0-9a-f]{7,40}$/i.test(ref);
+  if (revision(base)) return "";
+
+  return revision(head) ? `${base}...${context.branch || "HEAD"}` : `${base}...${head}`;
+}
+
 /** Strip Salesforce compound suffixes: `Foo.cls-meta.xml` → `Foo`. */
 function stripSuffix(fileName) {
   const dot = fileName.indexOf(".");
@@ -276,7 +294,8 @@ export function renderMarkdown(deliverables, context = {}) {
     const state = pr.source === "compare" ? "未作成（比較リンク）" : pr.state;
     lines.push(`- ${label}: ${pr.url}${state ? ` （${state}）` : ""}`);
   }
-  if (context.base) lines.push(`- 差分範囲: \`${context.base}...${context.head ?? "HEAD"}\``);
+  const range = readableRange(context);
+  if (range) lines.push(`- 差分範囲: \`${range}\``);
   lines.push(`- コンポーネント数: ${components.length}`);
   lines.push("");
 
@@ -328,7 +347,8 @@ function renderBacklogNotation(deliverables, context = {}) {
     const state = pr.source === "compare" ? "未作成（比較リンク）" : pr.state;
     lines.push(`- ${label}: ${pr.url}${state ? ` （${state}）` : ""}`);
   }
-  if (context.base) lines.push(`- 差分範囲: ${context.base}...${context.head ?? "HEAD"}`);
+  const rangeText = readableRange(context);
+  if (rangeText) lines.push(`- 差分範囲: ${rangeText}`);
   lines.push(`- コンポーネント数: ${components.length}`);
   lines.push("");
 
