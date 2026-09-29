@@ -1,0 +1,54 @@
+{
+  "name": "sfdx-devops-kit",
+  "version": "0.1.0",
+  "description": "Configuration-driven CI/CD, quality-gate and AI-review pipeline for any Salesforce DX project. One YAML file is the single source of truth.",
+  "keywords": [
+    "salesforce",
+    "sfdx",
+    "devops",
+    "ci-cd",
+    "github-actions",
+    "code-analyzer",
+    "apex",
+    "lwc",
+    "playwright",
+    "backlog",
+    "claude-code"
+  ],
+  "license": "MIT",
+  "author": "furuCRM Inc.",
+  "homepage": "https://github.com/furuCRM-Inc/sfdx-devops-kit",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/furuCRM-Inc/sfdx-devops-kit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/furuCRM-Inc/sfdx-devops-kit/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "sfdx-devops-kit": "bin/cli.mjs",
+    "sdk-pipeline": "bin/cli.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates",
+    "scripts",
+    "schema",
+    "README.md",
+    "README.ja.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test tests/",
+    "lint": "node --check bin/cli.mjs && node -e \"import('./src/index.mjs').then(()=>console.log('modules load'))\"",
+    "cli": "node bin/cli.mjs"
+  },
+  "dependencies": {
+    "js-yaml": "^5.4.2"
+  }
+}

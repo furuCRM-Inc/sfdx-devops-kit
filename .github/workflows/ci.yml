@@ -1,0 +1,129 @@
+# CI for the kit itself. The pipeline it generates for consumer projects lives in
+# templates/github/workflows/sfdx-ci-cd.yml.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["18", "20", "22", "24"]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+  scaffold:
+    name: Scaffold into a real SFDX project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Salesforce CLI
+        run: npm install --global @salesforce/cli@latest
+
+      - name: Generate a project and install the pipeline
+        run: |
+          sf project generate --name demoProject --template standard --output-dir /tmp/spk
+          node bin/cli.mjs init /tmp/spk/demoProject --project-name demoProject
+
+      - name: The generated config must validate and plan
+        working-directory: /tmp/spk/demoProject
+        run: |
+          npm install --no-audit --no-fund --silent
+          node "$GITHUB_WORKSPACE/bin/cli.mjs" validate
+          node "$GITHUB_WORKSPACE/bin/cli.mjs" plan --env st
+          node "$GITHUB_WORKSPACE/bin/cli.mjs" run --dry-run --env st
+
+      - name: Re-running init must not overwrite anything
+        working-directory: /tmp/spk/demoProject
+        run: |
+          node "$GITHUB_WORKSPACE/bin/cli.mjs" init . --project-name demoProject | tee second-init.log
+          if grep -q "overwritten: [1-9]" second-init.log; then
+            echo "::error::init overwrote files on a second run"
+            exit 1
+          fi
+
+  lint:
+    name: Format and secret hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Templates must be parseable
+        run: |
+          node -e "
+            import('js-yaml').then(async ({ load }) => {
+              const fs = await import('node:fs');
+              for (const file of [
+                'templates/config/sfdx-pipeline.config.yml',
+                'templates/github/workflows/sfdx-ci-cd.yml',
+                '.github/workflows/ci.yml',
+              ]) {
+                load(fs.readFileSync(file, 'utf8'));
+                console.log('ok', file);
+              }
+              JSON.parse(fs.readFileSync('templates/mcp/.mcp.json', 'utf8'));
+              console.log('ok templates/mcp/.mcp.json');
+            })
+          "
+        env:
+          NODE_PATH: node_modules
+
+      - run: npm ci
+
+      - name: Re-check templates with dependencies installed
+        run: |
+          node -e "
+            import('js-yaml').then(async ({ load }) => {
+              const fs = await import('node:fs');
+              for (const file of ['templates/config/sfdx-pipeline.config.yml','templates/github/workflows/sfdx-ci-cd.yml']) {
+                const doc = load(fs.readFileSync(file, 'utf8'));
+                if (!doc) throw new Error('empty document: ' + file);
+              }
+            })
+          "
+
+      - name: No credentials committed
+        run: |
+          # An SFDX auth URL, a Backlog key or a private key must never land here.
+          if grep -rInE "force://PlatformCLI::[A-Za-z0-9]{10,}|BACKLOG_API_KEY[=:][[:space:]]*[A-Za-z0-9]{20,}|BEGIN (RSA|OPENSSH|PRIVATE) KEY" \
+               --exclude-dir=node_modules --exclude-dir=.git .; then
+            echo "::error::a credential-looking string is present in the repository"
+            exit 1
+          fi
+          echo "no credential patterns found"

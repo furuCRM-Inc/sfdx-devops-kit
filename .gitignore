@@ -1,0 +1,19 @@
+node_modules/
+npm-debug.log*
+.DS_Store
+
+# Never commit credentials or org state
+.env
+.env.*
+*.auth-url
+sfdx-auth-url.txt
+.sf/
+.sfdx/
+
+# Generated artifacts
+code-analyzer-results.json
+pipeline-plan.json
+pipeline-validate.json
+playwright-report/
+test-results/
+coverage/
