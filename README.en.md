@@ -345,13 +345,15 @@ every step, including release and rollback.
 
 ## Troubleshooting
 
-| Symptom                                           | Cause                                                                                               |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `Secret SF_ST_AUTH_URL is not set`                | Add the secret `validate` names; get the value from `sf org display --target-org <alias> --verbose` |
-| Analyzer reports `UninstantiableEngineError`      | No JDK. Install Java 11+, or use `rule_selector: eslint`                                            |
-| `Coverage gate cannot be evaluated`               | The deploy ran no Apex tests — `test_level` is `NoTestRun`                                          |
-| `cannot also be provided when using --source-dir` | Two deployment selectors on one environment; `validate` catches this                                |
-| `deliverables` lists nothing                      | The base ref is missing locally — `git fetch origin`                                                |
+| Symptom                                           | Cause                                                                                                                        |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `Secret SF_ST_AUTH_URL is not set`                | Add the secret `validate` names; get the value from `sf org display --target-org <alias> --verbose`                          |
+| Analyzer reports `UninstantiableEngineError`      | No JDK. Install Java 11+, or use `rule_selector: eslint`                                                                     |
+| `Coverage gate cannot be evaluated`               | The deploy ran no Apex tests — `test_level` is `NoTestRun`                                                                   |
+| `cannot also be provided when using --source-dir` | Two deployment selectors on one environment; `validate` catches this                                                         |
+| `deliverables` lists nothing                      | The base ref is missing locally — `git fetch origin`                                                                         |
+| The prettier stage always passes                  | `npm run prettier` is `--write` in the Salesforce standard template; use `npm run pipeline:prettier` (`doctor` catches this) |
+| lint exits 2 in a project with no LWC             | Missing `--no-error-on-unmatched-pattern`; use `npm run pipeline:lint`                                                       |
 
 ---
 

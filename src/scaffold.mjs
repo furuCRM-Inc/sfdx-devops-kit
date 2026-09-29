@@ -44,13 +44,26 @@ export const SCAFFOLD_DIRS = [
   "manifest",
 ];
 
-/** Scripts merged into the target `package.json`. */
+/**
+ * Scripts merged into the target `package.json`.
+ *
+ * The gate commands are namespaced (`pipeline:*`) because the names they would
+ * otherwise want are already taken, and taken for something else: a project
+ * generated from the Salesforce standard template defines `prettier` as
+ * `prettier --write` (it *formats*) and `prettier:verify` as the check. A
+ * pipeline that ran `npm run prettier` would therefore rewrite the working tree
+ * and pass, instead of failing on unformatted code. Its `lint` also lacks
+ * `--no-error-on-unmatched-pattern`, so a project with no LWC yet fails with
+ * exit 2 and no findings.
+ *
+ * Existing scripts are never replaced, so these are additive and unambiguous.
+ */
 export const PACKAGE_SCRIPTS = {
-  // Matches the Salesforce template's own glob, plus the flag that keeps an
-  // empty project (no LWC yet) from failing with exit 2.
-  lint: 'eslint "**/{aura,lwc}/**/*.js" --no-error-on-unmatched-pattern',
-  prettier: 'prettier --check "**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}"',
-  "prettier:format": 'prettier --write "**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}"',
+  "pipeline:lint": 'eslint "**/{aura,lwc}/**/*.js" --no-error-on-unmatched-pattern',
+  "pipeline:prettier":
+    'prettier --check "**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}"',
+  "pipeline:format":
+    'prettier --write "**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}"',
   "test:unit": "sfdx-lwc-jest",
   "test:e2e": "playwright test",
   "pipeline:validate": "sfdx-devops-kit validate",

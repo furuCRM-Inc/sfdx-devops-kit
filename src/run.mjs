@@ -12,7 +12,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { checkCoverage, parseAnalyzerResult, parseDeployResult } from "./results.mjs";
+import {
+  checkCoverage,
+  parseAnalyzerResult,
+  parseDeployResult,
+} from "./results.mjs";
 import { detectRtkSf, gateRtkSf } from "./rtk.mjs";
 
 /**
@@ -23,7 +27,11 @@ import { detectRtkSf, gateRtkSf } from "./rtk.mjs";
  * @param {{cwd?: string, dryRun?: boolean, onEvent?: Function}} options
  * @returns {{ok: boolean, results: object[], coverage: number|null}}
  */
-export function runPipeline(plan, config, { cwd = process.cwd(), dryRun = false, onEvent } = {}) {
+export function runPipeline(
+  plan,
+  config,
+  { cwd = process.cwd(), dryRun = false, onEvent } = {},
+) {
   const emit = onEvent ?? (() => {});
   const results = [];
   const state = { coverage: null };
@@ -34,7 +42,11 @@ export function runPipeline(plan, config, { cwd = process.cwd(), dryRun = false,
 
   for (const stage of plan.stages) {
     if (!stage.enabled) {
-      results.push({ id: stage.id, status: "skipped", message: stage.skipped_because });
+      results.push({
+        id: stage.id,
+        status: "skipped",
+        message: stage.skipped_because,
+      });
       emit({ type: "skip", stage, message: stage.skipped_because });
       continue;
     }
@@ -56,7 +68,11 @@ export function runPipeline(plan, config, { cwd = process.cwd(), dryRun = false,
     if (outcome.status === "failed") {
       ok = false;
       if (stage.fail_on_error) {
-        emit({ type: "abort", stage, message: "stage failed; stopping pipeline" });
+        emit({
+          type: "abort",
+          stage,
+          message: "stage failed; stopping pipeline",
+        });
         break;
       }
     }
@@ -66,16 +82,27 @@ export function runPipeline(plan, config, { cwd = process.cwd(), dryRun = false,
 }
 
 /** Run one stage, returning `{id, status, message, …}`. */
-export function runStage(stage, { cwd, dryRun, state, config, emit = () => {} }) {
+export function runStage(
+  stage,
+  { cwd, dryRun, state, config, emit = () => {} },
+) {
   emit({ type: "start", stage });
 
   // The coverage gate reads the deploy result rather than running commands.
   if (stage.id === "unit_test") {
     if (dryRun) {
-      return { id: stage.id, status: "dry-run", message: `would gate coverage at ${stage.coverage_threshold}%` };
+      return {
+        id: stage.id,
+        status: "dry-run",
+        message: `would gate coverage at ${stage.coverage_threshold}%`,
+      };
     }
     const gate = checkCoverage(state.coverage, stage.coverage_threshold);
-    const outcome = { id: stage.id, status: gate.ok ? "passed" : "failed", message: gate.message };
+    const outcome = {
+      id: stage.id,
+      status: gate.ok ? "passed" : "failed",
+      message: gate.message,
+    };
     emit({ type: gate.ok ? "pass" : "fail", stage, message: gate.message });
     return outcome;
   }
@@ -95,7 +122,9 @@ export function runStage(stage, { cwd, dryRun, state, config, emit = () => {} })
     return {
       id: stage.id,
       status: "dry-run",
-      message: stage.commands.length ? stage.commands.join(" && ") : "(no command)",
+      message: stage.commands.length
+        ? stage.commands.join(" && ")
+        : "(no command)",
     };
   }
 
@@ -119,14 +148,18 @@ export function runStage(stage, { cwd, dryRun, state, config, emit = () => {} })
   if (failed && (stage.id === "lint" || stage.id === "prettier")) {
     const output = `${failed.stdout}${failed.stderr}`;
     if (/No files matching the pattern|No files found/i.test(output)) {
-      const message = "no files to check yet (the glob matched nothing) — treated as a pass";
+      const message =
+        "no files to check yet (the glob matched nothing) — treated as a pass";
       emit({ type: "pass", stage, message });
       return { id: stage.id, status: "passed", message };
     }
   }
 
   const detail = interpret(stage, commandResults, { cwd, state, config });
-  const status = detail.ok === false || (detail.ok === undefined && failed) ? "failed" : "passed";
+  const status =
+    detail.ok === false || (detail.ok === undefined && failed)
+      ? "failed"
+      : "passed";
   const message = detail.message ?? (failed ? `exit ${failed.status}` : "ok");
 
   emit({ type: status === "passed" ? "pass" : "fail", stage, message });
@@ -138,15 +171,18 @@ function interpret(stage, commandResults, { cwd, state, config }) {
   const last = commandResults[commandResults.length - 1];
 
   if (stage.id === "code_analyzer") {
-    const payload = readJsonFile(path.join(cwd, stage.output_file ?? "code-analyzer-results.json"));
+    const payload = readJsonFile(
+      path.join(cwd, stage.output_file ?? "code-analyzer-results.json"),
+    );
     if (!payload) {
       // No report file: fall back to the process exit code, which the analyzer
       // sets from --severity-threshold on its own.
       return {
         ok: last?.status === 0,
-        message: last?.status === 0
-          ? `no violations at severity <= ${stage.severity_threshold}`
-          : `analyzer exited ${last?.status} (report file not found)`,
+        message:
+          last?.status === 0
+            ? `no violations at severity <= ${stage.severity_threshold}`
+            : `analyzer exited ${last?.status} (report file not found)`,
       };
     }
     const summary = parseAnalyzerResult(payload, stage.severity_threshold);
@@ -169,9 +205,10 @@ function interpret(stage, commandResults, { cwd, state, config }) {
     if (summary.coverage !== null) state.coverage = summary.coverage;
     return {
       ok: summary.ok,
-      message: summary.coverage === null
-        ? summary.message
-        : `${summary.message}; coverage ${summary.coverage}%`,
+      message:
+        summary.coverage === null
+          ? summary.message
+          : `${summary.message}; coverage ${summary.coverage}%`,
       extra: {
         components: summary.componentsDeployed,
         component_errors: summary.componentErrors,
@@ -182,7 +219,49 @@ function interpret(stage, commandResults, { cwd, state, config }) {
     };
   }
 
-  return { ok: last ? last.status === 0 : true, message: last?.status === 0 ? "ok" : undefined };
+  // Stages without a structured report (lint, prettier, integration, e2e,
+  // documentation) are judged by their exit code — but "exit 1" tells the reader
+  // nothing they can act on. The tool already printed the reason, so carry its
+  // own summary line, and keep the tail for the caller to display.
+  if (!last || last.status === 0) {
+    return {
+      ok: last ? last.status === 0 : true,
+      message: last?.status === 0 ? "ok" : undefined,
+    };
+  }
+  const failure = toolFailure(last);
+  return {
+    ok: false,
+    message: failure.summary
+      ? `${failure.summary} (exit ${last.status})`
+      : undefined,
+    extra: { output: failure.output },
+  };
+}
+
+/**
+ * A one-line reason and the tail of a tool's output.
+ *
+ * ESLint and Prettier both end with a summary line ("✖ 2 problems", "Code style
+ * issues found ..."); when neither is present the last non-empty line is still
+ * closer to the cause than the exit code is.
+ */
+function toolFailure(entry, { maxLines = 40, maxChars = 4000 } = {}) {
+  const combined = `${entry.stdout ?? ""}${entry.stderr ?? ""}`.replace(
+    /\s+$/,
+    "",
+  );
+  const lines = combined.split("\n").filter((line) => line.trim() !== "");
+  const summary =
+    lines.find((line) => /✖\s+\d+\s+problems?/.test(line))?.trim() ??
+    lines.find((line) => /Code style issues found/i.test(line))?.trim() ??
+    lines[lines.length - 1]?.trim();
+  const tail = lines.slice(-maxLines).join("\n");
+  return {
+    // The caller prints its own ✖, so a leading one from the tool would double up.
+    summary: summary ? truncate(summary.replace(/^[✖✗×x]\s*/i, ""), 200) : null,
+    output: tail.length > maxChars ? `…\n${tail.slice(-maxChars)}` : tail,
+  };
 }
 
 function execute(command, cwd) {
@@ -222,6 +301,8 @@ function readJsonFile(file) {
 }
 
 function truncate(text, limit = 200) {
-  const flat = String(text ?? "").replace(/\s+/g, " ").trim();
+  const flat = String(text ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
   return flat.length > limit ? `${flat.slice(0, limit - 1)}…` : flat;
 }

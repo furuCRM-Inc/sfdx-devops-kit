@@ -61,10 +61,27 @@ Secret 名は `SF_<KEY>_AUTH_URL` として導出されます（`st` → `SF_ST_
 
 ### `lint` / `prettier`
 
-| キー            | 既定値                              | 説明                           |
-| --------------- | ----------------------------------- | ------------------------------ |
-| `command`       | `npm run lint` / `npm run prettier` | 任意のコマンドに置き換え可     |
-| `fail_on_error` | `true`                              | `false` なら失敗を記録して継続 |
+| キー            | 既定値                                                | 説明                           |
+| --------------- | ----------------------------------------------------- | ------------------------------ |
+| `command`       | `npm run pipeline:lint` / `npm run pipeline:prettier` | 任意のコマンドに置き換え可     |
+| `fail_on_error` | `true`                                                | `false` なら失敗を記録して継続 |
+
+ゲート用のスクリプトは `init` が `pipeline:` 名前空間で追加します。理由は名前の衝突です
+— `sf project generate --template standard` で作られたプロジェクトでは `prettier` が
+**`prettier --write`**（整形）として定義されており、`npm run prettier` をゲートにすると
+作業ツリーを書き換えて必ず成功します。また同テンプレートの `lint` には
+`--no-error-on-unmatched-pattern` が無いため、LWC がまだ無いプロジェクトでは違反 0 件でも
+exit 2 で失敗します。
+
+`doctor` はこの 2 点を検出します。
+
+```text
+✖ prettier command   "prettier" runs `--write`: it rewrites files and always passes.
+✔ lint command       "lint" has no --no-error-on-unmatched-pattern: ESLint exits 2 …
+```
+
+失敗したステージは、ツールの出力（ESLint の違反一覧など）をそのまま表示します。
+`exit 1` だけを見て原因を探し直す必要はありません。
 
 ### `code_analyzer`
 

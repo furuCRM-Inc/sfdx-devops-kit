@@ -48,8 +48,8 @@ const DEFAULTS = {
   project_name: "sfdx-project",
   environments: {},
   pipeline_settings: {
-    lint: { enabled: true, fail_on_error: true, command: "npm run lint" },
-    prettier: { enabled: true, fail_on_error: true, command: "npm run prettier" },
+    lint: { enabled: true, fail_on_error: true, command: "npm run pipeline:lint" },
+    prettier: { enabled: true, fail_on_error: true, command: "npm run pipeline:prettier" },
     code_analyzer: {
       enabled: true,
       engine: "code-analyzer",

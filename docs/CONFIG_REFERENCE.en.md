@@ -59,10 +59,28 @@ Stages run in this order. Every stage takes `enabled` (bool, required).
 
 ### `lint`, `prettier`
 
-| Key             | Default                             | Notes                                     |
-| --------------- | ----------------------------------- | ----------------------------------------- |
-| `command`       | `npm run lint` / `npm run prettier` | Replace with your own                     |
-| `fail_on_error` | `true`                              | `false` records the failure and continues |
+| Key             | Default                                               | Notes                                     |
+| --------------- | ----------------------------------------------------- | ----------------------------------------- |
+| `command`       | `npm run pipeline:lint` / `npm run pipeline:prettier` | Replace with your own                     |
+| `fail_on_error` | `true`                                                | `false` records the failure and continues |
+
+`init` installs the gate scripts under a `pipeline:` namespace, because the
+obvious names are already taken by something else: a project generated with
+`sf project generate --template standard` defines `prettier` as
+**`prettier --write`**, so a gate running `npm run prettier` rewrites the working
+tree and always passes. Its `lint` also omits
+`--no-error-on-unmatched-pattern`, so a project without LWC yet exits 2 with no
+findings.
+
+`doctor` detects both:
+
+```text
+✖ prettier command   "prettier" runs `--write`: it rewrites files and always passes.
+✔ lint command       "lint" has no --no-error-on-unmatched-pattern: ESLint exits 2 …
+```
+
+A failing stage prints the tool's own output (the ESLint findings, the Prettier
+file list), so `exit 1` is never the whole story.
 
 ### `code_analyzer`
 

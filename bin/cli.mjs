@@ -33,13 +33,21 @@ import {
 } from "../src/deliverables.mjs";
 import { ticketContext } from "../src/backlog.mjs";
 import { detectRtkSf, rtkAdvice, hasIndex } from "../src/rtk.mjs";
+import { auditGateCommands } from "../src/npm-scripts.mjs";
 
 const EXIT_OK = 0;
 const EXIT_GATE = 1;
 const EXIT_USAGE = 2;
 
 const pkg = JSON.parse(
-  fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "package.json"), "utf8"),
+  fs.readFileSync(
+    path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "..",
+      "package.json",
+    ),
+    "utf8",
+  ),
 );
 
 main(process.argv.slice(2));
@@ -98,10 +106,15 @@ function main(argv) {
 // ---------------------------------------------------------------------------
 
 function cmdInit({ positionals, flags }) {
-  const targetDir = path.resolve(positionals[0] ?? flags.target ?? process.cwd());
+  const targetDir = path.resolve(
+    positionals[0] ?? flags.target ?? process.cwd(),
+  );
   const dryRun = Boolean(flags["dry-run"]);
 
-  if (!fs.existsSync(path.join(targetDir, "sfdx-project.json")) && !flags.force) {
+  if (
+    !fs.existsSync(path.join(targetDir, "sfdx-project.json")) &&
+    !flags.force
+  ) {
     console.error(
       `✖ ${targetDir} is not an SFDX project (no sfdx-project.json).\n` +
         "  Create one first:  sf project generate --name MyProject --template standard\n" +
@@ -111,26 +124,40 @@ function cmdInit({ positionals, flags }) {
   }
 
   const projectName = flags["project-name"] ?? path.basename(targetDir);
-  const result = scaffold({ targetDir, force: Boolean(flags.force), dryRun, projectName });
+  const result = scaffold({
+    targetDir,
+    force: Boolean(flags.force),
+    dryRun,
+    projectName,
+  });
 
-  console.log(`${dryRun ? "[dry run] " : ""}sfdx-devops-kit init → ${targetDir}`);
+  console.log(
+    `${dryRun ? "[dry run] " : ""}sfdx-devops-kit init → ${targetDir}`,
+  );
   report("created", result.created);
   report("overwritten", result.overwritten);
   report("kept (already present, use --force to replace)", result.skipped);
-  if (result.dirs.length) console.log(`  directories: ${result.dirs.join(", ")}`);
+  if (result.dirs.length)
+    console.log(`  directories: ${result.dirs.join(", ")}`);
   console.log(`  package.json: ${result.packageJson}`);
 
   const detection = detectRtkSf({ cwd: targetDir });
   console.log(`\n${rtkAdvice(detection)}`);
   if (detection.installed && !hasIndex(targetDir)) {
-    console.log("  (this project has no .rtk-sf index yet — run the index command above)");
+    console.log(
+      "  (this project has no .rtk-sf index yet — run the index command above)",
+    );
   }
 
   console.log("\nNext steps:");
-  console.log("  1. Edit sfdx-pipeline.config.yml (org aliases, thresholds, Backlog project key).");
+  console.log(
+    "  1. Edit sfdx-pipeline.config.yml (org aliases, thresholds, Backlog project key).",
+  );
   console.log("  2. npm install");
   console.log("  3. npx sfdx-devops-kit validate");
-  console.log("  4. Add GitHub Secrets for each environment (see `validate` output).");
+  console.log(
+    "  4. Add GitHub Secrets for each environment (see `validate` output).",
+  );
   return EXIT_OK;
 }
 
@@ -152,34 +179,57 @@ async function cmdSetup({ positionals, flags }) {
   const { runSetup } = await import("../src/setup-wizard.mjs");
   return runSetup({
     cwd: targetDir,
-    skip: { environments: Boolean(flags["keep-environments"]), backlog: Boolean(flags["no-backlog"]) },
+    skip: {
+      environments: Boolean(flags["keep-environments"]),
+      backlog: Boolean(flags["no-backlog"]),
+    },
   });
 }
 
 function cmdValidate({ flags }) {
-  const { config, file, errors, warnings } = loadConfig({ cwd: process.cwd(), file: flags.config });
+  const { config, file, errors, warnings } = loadConfig({
+    cwd: process.cwd(),
+    file: flags.config,
+  });
   if (flags.json) {
-    console.log(JSON.stringify({ file, ok: errors.length === 0, errors, warnings, config }, null, 2));
+    console.log(
+      JSON.stringify(
+        { file, ok: errors.length === 0, errors, warnings, config },
+        null,
+        2,
+      ),
+    );
     return errors.length === 0 ? EXIT_OK : EXIT_GATE;
   }
 
-  console.log(file ? `config: ${path.relative(process.cwd(), file) || file}` : "config: (not found)");
+  console.log(
+    file
+      ? `config: ${path.relative(process.cwd(), file) || file}`
+      : "config: (not found)",
+  );
   for (const warning of warnings) console.log(`  ⚠ ${warning}`);
   for (const error of errors) console.log(`  ✖ ${error}`);
 
   if (errors.length > 0) {
-    console.log(`\n${errors.length} error(s) — fix them before running the pipeline.`);
+    console.log(
+      `\n${errors.length} error(s) — fix them before running the pipeline.`,
+    );
     return EXIT_GATE;
   }
 
-  console.log(`  ✔ valid — ${Object.keys(config.environments).length} environment(s)`);
+  console.log(
+    `  ✔ valid — ${Object.keys(config.environments).length} environment(s)`,
+  );
   console.log("\nRequired GitHub Secrets:");
   for (const key of Object.keys(config.environments)) {
     const env = resolveEnvironment(config, key);
     const plan = planPipeline(config, { env: key });
-    console.log(`  ${plan.environment.auth_secret.padEnd(24)} → ${env.alias} (${env.type})`);
+    console.log(
+      `  ${plan.environment.auth_secret.padEnd(24)} → ${env.alias} (${env.type})`,
+    );
   }
-  if (warnings.length > 0) console.log(`\n${warnings.length} warning(s) above are advisory.`);
+  if (warnings.length > 0)
+    console.log(`\n${warnings.length} warning(s) above are advisory.`);
   return EXIT_OK;
 }
 
@@ -202,7 +252,9 @@ function cmdPlan({ flags }) {
       `(${plan.environment.type}, secret ${plan.environment.auth_secret})`,
   );
   const selector = plan.environment.selector;
-  console.log(`deploy selector: ${selector ? `${selector.flag} ${selector.value}` : "(default package directories)"}`);
+  console.log(
+    `deploy selector: ${selector ? `${selector.flag} ${selector.value}` : "(default package directories)"}`,
+  );
   console.log("");
 
   for (const stage of plan.stages) {
@@ -221,12 +273,18 @@ function cmdRun({ positionals, flags }) {
   const only = positionals.length > 0 ? positionals : list(flags.only);
   for (const stage of only) {
     if (!STAGE_ORDER.includes(stage)) {
-      console.error(`✖ Unknown stage "${stage}". Known stages: ${STAGE_ORDER.join(", ")}`);
+      console.error(
+        `✖ Unknown stage "${stage}". Known stages: ${STAGE_ORDER.join(", ")}`,
+      );
       return EXIT_USAGE;
     }
   }
 
-  const plan = planPipeline(config, { env: flags.env, only, skip: list(flags.skip) });
+  const plan = planPipeline(config, {
+    env: flags.env,
+    only,
+    skip: list(flags.skip),
+  });
   const dryRun = Boolean(flags["dry-run"]);
 
   const outcome = runPipeline(plan, config, {
@@ -234,8 +292,10 @@ function cmdRun({ positionals, flags }) {
     dryRun,
     onEvent: (event) => {
       if (flags.json) return;
-      if (event.type === "start") console.log(`▶ ${event.stage.id}: ${event.stage.name}`);
-      else if (event.type === "skip") console.log(`· ${event.stage.id}: skipped — ${event.message}`);
+      if (event.type === "start")
+        console.log(`▶ ${event.stage.id}: ${event.stage.name}`);
+      else if (event.type === "skip")
+        console.log(`· ${event.stage.id}: skipped — ${event.message}`);
       else if (event.type === "pass") console.log(`  ✔ ${event.message}`);
       else if (event.type === "fail") console.log(`  ✖ ${event.message}`);
       else if (event.type === "abort") console.log(`  ⨯ ${event.message}`);
@@ -243,12 +303,36 @@ function cmdRun({ positionals, flags }) {
   });
 
   if (flags.json) {
-    console.log(JSON.stringify({ ok: outcome.ok, coverage: outcome.coverage, results: outcome.results }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          ok: outcome.ok,
+          coverage: outcome.coverage,
+          results: outcome.results,
+        },
+        null,
+        2,
+      ),
+    );
   } else {
+    // A gate that fails without showing why forces the reader to re-run the
+    // command by hand — and in CI, to guess. The tool already said it.
+    for (const entry of outcome.results) {
+      if (entry.status === "failed" && entry.output) {
+        console.log(
+          `\n── ${entry.id} の出力 ${"─".repeat(Math.max(0, 50 - entry.id.length))}`,
+        );
+        for (const line of String(entry.output).split("\n"))
+          console.log(`  ${line}`);
+      }
+    }
+
     const ran = outcome.results.filter((entry) => entry.status !== "skipped");
     if (dryRun) {
       // Nothing executed, so reporting "0/8 passed" would be misleading.
-      console.log(`\n✔ ${ran.length} stage(s) planned — nothing was executed (--dry-run)`);
+      console.log(
+        `\n✔ ${ran.length} stage(s) planned — nothing was executed (--dry-run)`,
+      );
     } else {
       console.log(
         `\n${outcome.ok ? "✔ pipeline passed" : "✖ pipeline failed"} — ` +
@@ -278,7 +362,8 @@ function cmdDeliverables({ flags }) {
 
   const deliverables = deriveDeliverables(entries);
   const ticket = ticketContext(config, { cwd: process.cwd() });
-  const includePr = config.backlog_integration?.deliverables?.include_pr_link !== false;
+  const includePr =
+    config.backlog_integration?.deliverables?.include_pr_link !== false;
   const pullRequest = includePr
     ? resolvePullRequest({ cwd: process.cwd(), branch: ticket.branch, base })
     : null;
@@ -286,9 +371,15 @@ function cmdDeliverables({ flags }) {
 
   let output;
   if (format === "json") {
-    output = JSON.stringify({ ...ticket, base, head, pull_request: pullRequest, ...deliverables }, null, 2);
+    output = JSON.stringify(
+      { ...ticket, base, head, pull_request: pullRequest, ...deliverables },
+      null,
+      2,
+    );
   } else if (format === "package-xml") {
-    output = renderPackageXml(deliverables, { apiVersion: flags["api-version"] });
+    output = renderPackageXml(deliverables, {
+      apiVersion: flags["api-version"],
+    });
   } else if (format === "md") {
     output = renderMarkdown(deliverables, {
       ticket: ticket.ticket,
@@ -296,17 +387,24 @@ function cmdDeliverables({ flags }) {
       base,
       head,
       pull_request: pullRequest,
-      format: flags["comment-format"] ?? config.backlog_integration?.comment_format ?? "markdown",
+      format:
+        flags["comment-format"] ??
+        config.backlog_integration?.comment_format ??
+        "markdown",
     });
   } else {
-    console.error(`✖ Unknown --format "${format}" (expected md, json or package-xml).`);
+    console.error(
+      `✖ Unknown --format "${format}" (expected md, json or package-xml).`,
+    );
     return EXIT_USAGE;
   }
 
   if (flags.out) {
     fs.mkdirSync(path.dirname(path.resolve(flags.out)), { recursive: true });
     fs.writeFileSync(path.resolve(flags.out), output, "utf8");
-    console.log(`wrote ${deliverables.components.length} component(s) to ${flags.out}`);
+    console.log(
+      `wrote ${deliverables.components.length} component(s) to ${flags.out}`,
+    );
   } else {
     process.stdout.write(output);
   }
@@ -315,7 +413,10 @@ function cmdDeliverables({ flags }) {
 
 function cmdTicket({ flags }) {
   const config = requireConfig(flags);
-  const context = ticketContext(config, { cwd: process.cwd(), branch: flags.branch });
+  const context = ticketContext(config, {
+    cwd: process.cwd(),
+    branch: flags.branch,
+  });
   if (flags.json) {
     console.log(JSON.stringify(context, null, 2));
     return context.ticket ? EXIT_OK : EXIT_GATE;
@@ -343,7 +444,10 @@ function cmdTicket({ flags }) {
  */
 function cmdBacklog({ flags }) {
   const config = requireConfig(flags);
-  const context = ticketContext(config, { cwd: process.cwd(), branch: flags.branch });
+  const context = ticketContext(config, {
+    cwd: process.cwd(),
+    branch: flags.branch,
+  });
   const tools = backlogTools(config);
   const phase = flags.phase ?? "review_ready";
 
@@ -360,10 +464,16 @@ function cmdBacklog({ flags }) {
   if (flags.comment === undefined || flags.comment) {
     const base = flags.base ?? "origin/main";
     try {
-      const deliverables = deriveDeliverables(readDiff({ base, head: flags.head ?? "HEAD" }));
+      const deliverables = deriveDeliverables(
+        readDiff({ base, head: flags.head ?? "HEAD" }),
+      );
       pullRequest =
         config.backlog_integration?.deliverables?.include_pr_link !== false
-          ? resolvePullRequest({ cwd: process.cwd(), branch: context.branch, base })
+          ? resolvePullRequest({
+              cwd: process.cwd(),
+              branch: context.branch,
+              base,
+            })
           : null;
       comment = renderMarkdown(deliverables, {
         ticket: context.ticket,
@@ -371,24 +481,38 @@ function cmdBacklog({ flags }) {
         base,
         head: flags.head ?? "HEAD",
         pull_request: pullRequest,
-        format: flags["comment-format"] ?? config.backlog_integration?.comment_format ?? "markdown",
+        format:
+          flags["comment-format"] ??
+          config.backlog_integration?.comment_format ??
+          "markdown",
       });
     } catch (error) {
       comment = "";
       if (!flags.json) {
-        console.error(`⚠ Could not build the deliverables comment: ${String(error.message).split("\n")[0]}`);
+        console.error(
+          `⚠ Could not build the deliverables comment: ${String(error.message).split("\n")[0]}`,
+        );
       }
     }
   }
 
   const calls = [];
   if (context.ticket) {
-    calls.push({ tool: tools.getIssue, arguments: { issueKey: context.ticket } });
+    calls.push({
+      tool: tools.getIssue,
+      arguments: { issueKey: context.ticket },
+    });
     if (comment) {
-      calls.push({ tool: tools.addComment, arguments: { issueKey: context.ticket, content: comment } });
+      calls.push({
+        tool: tools.addComment,
+        arguments: { issueKey: context.ticket, content: comment },
+      });
     }
     if (status.id !== null) {
-      calls.push({ tool: tools.updateIssue, arguments: { issueKey: context.ticket, statusId: status.id } });
+      calls.push({
+        tool: tools.updateIssue,
+        arguments: { issueKey: context.ticket, statusId: status.id },
+      });
     }
   }
 
@@ -404,15 +528,21 @@ function cmdBacklog({ flags }) {
 
   if (flags.json) {
     console.log(JSON.stringify(payload, null, 2));
-    return context.ticket && (status.id !== null || !flags["require-status"]) ? EXIT_OK : EXIT_GATE;
+    return context.ticket && (status.id !== null || !flags["require-status"])
+      ? EXIT_OK
+      : EXIT_GATE;
   }
 
   console.log(`MCP server: ${tools.server}`);
-  console.log(`ticket:     ${context.ticket ?? `(unresolved) — ${context.unresolved_reason}`}`);
+  console.log(
+    `ticket:     ${context.ticket ?? `(unresolved) — ${context.unresolved_reason}`}`,
+  );
   if (pullRequest?.url) {
     console.log(
       `PR:         ${pullRequest.url}` +
-        (pullRequest.source === "compare" ? "  (not opened yet — compare link)" : `  (${pullRequest.state})`),
+        (pullRequest.source === "compare"
+          ? "  (not opened yet — compare link)"
+          : `  (${pullRequest.state})`),
     );
   }
   console.log(
@@ -424,7 +554,8 @@ function cmdBacklog({ flags }) {
   console.log("\ncalls to make:");
   for (const call of calls) {
     const args = { ...call.arguments };
-    if (typeof args.content === "string") args.content = `<${args.content.split("\n").length} line comment>`;
+    if (typeof args.content === "string")
+      args.content = `<${args.content.split("\n").length} line comment>`;
     console.log(`  ${call.tool}(${JSON.stringify(args)})`);
   }
   if (calls.length === 0) console.log("  (none — no ticket key resolved)");
@@ -437,7 +568,10 @@ function cmdBacklog({ flags }) {
 
 function cmdDoctor({ flags }) {
   const checks = [];
-  const { config, file, errors, warnings } = loadConfig({ cwd: process.cwd(), file: flags.config });
+  const { config, file, errors, warnings } = loadConfig({
+    cwd: process.cwd(),
+    file: flags.config,
+  });
 
   checks.push({ name: "node", ok: true, detail: process.version });
   checks.push({
@@ -448,15 +582,33 @@ function cmdDoctor({ flags }) {
   checks.push({
     name: "config",
     ok: Boolean(config) && errors.length === 0,
-    detail: file ? `${path.basename(file)} (${errors.length} error(s), ${warnings.length} warning(s))` : "not found",
+    detail: file
+      ? `${path.basename(file)} (${errors.length} error(s), ${warnings.length} warning(s))`
+      : "not found",
   });
+
+  // The gate commands: a `--write` prettier script or a lint script that fails
+  // on an empty glob turns a quality gate into noise. Cheap to check here.
+  let packageJson = null;
+  try {
+    packageJson = JSON.parse(
+      fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8"),
+    );
+  } catch {
+    packageJson = null;
+  }
+  if (config && packageJson) {
+    checks.push(...auditGateCommands({ config, packageJson }));
+  }
 
   // Code Analyzer's PMD/CPD/SFGE engines are Java-based; without a JDK they
   // cannot start and the analyzer reports engine errors instead of findings.
   if (config?.pipeline_settings?.code_analyzer?.enabled) {
     const java = spawnSync("java", ["-version"], { encoding: "utf8" });
     const ok = !java.error && java.status === 0;
-    const version = /version "?([\d._]+)/.exec(`${java.stderr ?? ""}${java.stdout ?? ""}`)?.[1];
+    const version = /version "?([\d._]+)/.exec(
+      `${java.stderr ?? ""}${java.stdout ?? ""}`,
+    )?.[1];
     checks.push({
       name: "java (Code Analyzer)",
       ok,
@@ -474,7 +626,11 @@ function cmdDoctor({ flags }) {
     let registered = false;
     try {
       const parsed = JSON.parse(fs.readFileSync(mcpFile, "utf8"));
-      registered = Boolean(parsed.mcpServers?.[config.backlog_integration.mcp?.server_name ?? "backlog"]);
+      registered = Boolean(
+        parsed.mcpServers?.[
+          config.backlog_integration.mcp?.server_name ?? "backlog"
+        ],
+      );
     } catch {
       registered = false;
     }
@@ -494,10 +650,14 @@ function cmdDoctor({ flags }) {
       let commaJoined = false;
       try {
         const parsed = JSON.parse(fs.readFileSync(mcpFile, "utf8"));
-        const args = parsed.mcpServers[config.backlog_integration.mcp?.server_name ?? "backlog"].args ?? [];
+        const args =
+          parsed.mcpServers[
+            config.backlog_integration.mcp?.server_name ?? "backlog"
+          ].args ?? [];
         commaJoined = args.some(
           (arg, index) =>
-            (arg === "--enable-toolsets" && String(args[index + 1] ?? "").includes(",")) ||
+            (arg === "--enable-toolsets" &&
+              String(args[index + 1] ?? "").includes(",")) ||
             /^--enable-toolsets=.*,/.test(String(arg)),
         );
       } catch {
@@ -522,7 +682,10 @@ function cmdDoctor({ flags }) {
     });
   }
 
-  const detection = detectRtkSf({ python: config?.ai_assist?.rtk_sf?.python, cwd: process.cwd() });
+  const detection = detectRtkSf({
+    python: config?.ai_assist?.rtk_sf?.python,
+    cwd: process.cwd(),
+  });
   checks.push({
     name: "rtk-sf",
     ok: detection.installed,
@@ -534,7 +697,9 @@ function cmdDoctor({ flags }) {
       name: "rtk-sf index",
       ok: hasIndex(process.cwd()),
       optional: true,
-      detail: hasIndex(process.cwd()) ? ".rtk-sf/specs present" : "not indexed yet",
+      detail: hasIndex(process.cwd())
+        ? ".rtk-sf/specs present"
+        : "not indexed yet",
     });
   }
 
@@ -553,10 +718,15 @@ function cmdDoctor({ flags }) {
 // ---------------------------------------------------------------------------
 
 function requireConfig(flags) {
-  const { config, errors } = loadConfig({ cwd: process.cwd(), file: flags.config });
+  const { config, errors } = loadConfig({
+    cwd: process.cwd(),
+    file: flags.config,
+  });
   if (!config || errors.length > 0) {
     const detail = errors.map((error) => `  ✖ ${error}`).join("\n");
-    throw new Error(`Configuration is not usable:\n${detail}\n  Run \`sfdx-devops-kit validate\` for details.`);
+    throw new Error(
+      `Configuration is not usable:\n${detail}\n  Run \`sfdx-devops-kit validate\` for details.`,
+    );
   }
   return config;
 }

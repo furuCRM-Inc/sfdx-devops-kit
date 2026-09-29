@@ -90,3 +90,5 @@ export {
 } from "./setup.mjs";
 
 export { runSetup } from "./setup-wizard.mjs";
+
+export { auditGateCommands, parseNpmRun } from "./npm-scripts.mjs";

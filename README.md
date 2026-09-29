@@ -270,13 +270,15 @@ npx sfdx-devops-kit backlog --phase review_ready                     # 投稿す
 
 ## トラブルシューティング
 
-| 症状                                              | 原因と対処                                                                                             |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `Secret SF_ST_AUTH_URL is not set`                | `validate` が示す Secret を登録。値は `sf org display --target-org <alias> --verbose` の Sfdx Auth Url |
-| `UninstantiableEngineError`                       | JDK 不在。Java 11+ を導入、または `rule_selector: eslint`                                              |
-| `Coverage gate cannot be evaluated`               | デプロイが Apex テストを実行していない（`test_level` が `NoTestRun`）                                  |
-| `cannot also be provided when using --source-dir` | 1 環境にデプロイセレクタが 2 つ。`validate` で検出可能                                                 |
-| `deliverables` が空                               | base ref がローカルに無い（`git fetch origin`）                                                        |
+| 症状                                              | 原因と対処                                                                                                             |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `Secret SF_ST_AUTH_URL is not set`                | `validate` が示す Secret を登録。値は `sf org display --target-org <alias> --verbose` の Sfdx Auth Url                 |
+| `UninstantiableEngineError`                       | JDK 不在。Java 11+ を導入、または `rule_selector: eslint`                                                              |
+| `Coverage gate cannot be evaluated`               | デプロイが Apex テストを実行していない（`test_level` が `NoTestRun`）                                                  |
+| `cannot also be provided when using --source-dir` | 1 環境にデプロイセレクタが 2 つ。`validate` で検出可能                                                                 |
+| `deliverables` が空                               | base ref がローカルに無い（`git fetch origin`）                                                                        |
+| prettier ステージが常に成功する                   | `npm run prettier` が Salesforce 標準テンプレートでは `--write`。`npm run pipeline:prettier` を使う（`doctor` が検出） |
+| LWC が無いのに lint が exit 2 で落ちる            | `--no-error-on-unmatched-pattern` 不足。`npm run pipeline:lint` を使う                                                 |
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "name": "sfdx-devops-kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Configuration-driven CI/CD, quality-gate and AI-review pipeline for any Salesforce DX project. One YAML file is the single source of truth.",
   "keywords": [
     "salesforce",

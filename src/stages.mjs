@@ -89,12 +89,12 @@ export function enabledStages(plan) {
 const BUILDERS = {
   lint: ({ stage }) => ({
     name: "Lint (ESLint)",
-    commands: [stage.command || "npm run lint"],
+    commands: [stage.command || "npm run pipeline:lint"],
   }),
 
   prettier: ({ stage }) => ({
     name: "Format check (Prettier)",
-    commands: [stage.command || "npm run prettier"],
+    commands: [stage.command || "npm run pipeline:prettier"],
   }),
 
   code_analyzer: ({ stage }) => ({

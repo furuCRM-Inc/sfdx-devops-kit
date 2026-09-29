@@ -45,12 +45,12 @@ pipeline_settings:
   lint:
     enabled: true
     fail_on_error: true
-    command: "npm run lint"
+    command: "npm run pipeline:lint" # init が追加するスクリプト（空グロブで落ちない）
 
   prettier:
     enabled: true
     fail_on_error: true
-    command: "npm run prettier"
+    command: "npm run pipeline:prettier" # --check。`npm run prettier` は Salesforce 標準テンプレートでは --write です
 
   code_analyzer:
     enabled: true
