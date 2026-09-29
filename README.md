@@ -5,7 +5,7 @@ project and get CI/CD, quality gates, AI-assisted review and per-ticket metadata
 records — configured in `sfdx-pipeline.config.yml`, not scattered across workflow
 files.
 
-[日本語版 README](README.ja.md)
+[日本語版 README](README.ja.md) · [Operations manual](docs/OPERATIONS_MANUAL.md) · [Configuration reference](docs/CONFIG_REFERENCE.md)
 
 ```bash
 npx sfdx-devops-kit init .      # scaffold pipeline, CI, Claude skills, knowledge base
