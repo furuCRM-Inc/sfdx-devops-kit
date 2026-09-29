@@ -1,54 +1,71 @@
-# Operations manual
+# 運用マニュアル
 
-The full flow from ticket to release, with the commands and output you actually
-see. Examples use a fictional project `PROJ` (discount approval on Opportunity).
-Ready-made configurations, including a ten-environment setup, are in
-[pipeline samples](PIPELINE_SAMPLES.md).
+チケット作成からリリースまでの流れを、実際のコマンドと出力例で示します。例は
+架空プロジェクト `PROJ`（商談の割引申請機能）を題材にしています。設定そのものの
+実例は [パイプラインサンプル集](PIPELINE_SAMPLES.md)（環境 10 個の構成例を含む）を
+参照してください。
 
-日本語版：[OPERATIONS_MANUAL.ja.md](OPERATIONS_MANUAL.ja.md)
+- [全体像](#全体像)
+- [役割と責務](#役割と責務)
+- [事前準備（初回のみ）](#事前準備初回のみ)
+- [Step 1: チケット作成](#step-1-チケット作成)
+- [Step 2: 着手](#step-2-着手)
+- [Step 3: 実装（AI / 手作業）](#step-3-実装)
+- [Step 4: 個人 Dev Sandbox で確認](#step-4-個人-dev-sandbox-で確認)
+- [Step 5: レビュー（AI / 人手）](#step-5-レビューai-または人手)
+- [Step 6: PR 作成と CI](#step-6-pr-作成と-ci)
+- [Step 7: レビューとマージ](#step-7-レビューとマージ)
+- [Step 8: ST 環境への自動デプロイ](#step-8-st-環境への自動デプロイ)
+- [Step 9: UAT 展開](#step-9-uat-展開)
+- [Step 10: 本番リリース](#step-10-本番リリース)
+- [例外フロー](#例外フロー)
+- [定期運用](#定期運用)
+- [早見表](#早見表)
 
 ---
 
-## The flow
+## 全体像
 
 ```mermaid
 flowchart TD
-    A["Backlog<br/>PROJ-142 created"] --> B["Branch<br/>feature/PROJ-142-discount-approval"]
-    B --> C["Build with Claude Code<br/>Apex + LWC + tests"]
-    C --> D["Personal dev sandbox<br/>run --env dev"]
-    D --> E["/sfdx-review<br/>local AI review"]
-    E -->|critical findings| C
-    E -->|none| F["Backlog: review_ready<br/>+ delivered metadata posted"]
-    F --> G["Pull request → develop"]
+    A["Backlog<br/>PROJ-142 起票"] --> B["ブランチ作成<br/>feature/PROJ-142-discount-approval"]
+    B --> C["Claude Code で実装<br/>Apex + LWC + テスト"]
+    C --> D["個人 Dev Sandbox<br/>run --env dev"]
+    D --> E["/sfdx-review<br/>ローカル AI レビュー"]
+    E -->|クリティカル指摘あり| C
+    E -->|指摘なし| F["Backlog: 処理済み<br/>成果物一覧を投稿"]
+    F --> G["PR 作成 → develop"]
     G --> H["CI: plan → quality → validate<br/>+ deliverables"]
-    H -->|fails| C
-    H -->|passes| I["Reviewer approves"]
-    I --> J["Merge to develop"]
-    J --> K["Auto-deploy to ST<br/>+ E2E + docs regenerated"]
-    K --> L["UAT<br/>workflow_dispatch"]
-    L --> M["Production release<br/>approval-gated environment"]
-    M --> N["Backlog: closed"]
+    H -->|失敗| C
+    H -->|成功| I["レビュアー Approve"]
+    I --> J["develop へマージ"]
+    J --> K["ST へ自動デプロイ<br/>+ E2E + ドキュメント再生成"]
+    K --> L["UAT 展開<br/>workflow_dispatch"]
+    L --> M["本番リリース<br/>承認付き環境"]
+    M --> N["Backlog: 完了"]
 ```
 
-Ticket statuses come from `backlog_integration.status_mapping` in
-`sfdx-pipeline.config.yml`.
+ステータスは `sfdx-pipeline.config.yml` の `backlog_integration.status_mapping`
+に従います（既定：`処理中` → `処理済み` → `完了`）。
 
 ---
 
-## Roles
+## 役割と責務
 
-| Role            | Work                                                                                    | Tools                                      |
-| --------------- | --------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Developer       | Take the ticket, build, verify in a dev sandbox, `/sfdx-review`, open the PR            | Claude Code, dev sandbox, Backlog MCP, git |
-| Reviewer / lead | Check CI and the AI review, approve, merge to `develop`                                 | GitHub PR, Actions                         |
-| DevOps          | Change config (add a sandbox, adjust a gate), maintain the knowledge base, run releases | `sfdx-pipeline.config.yml`, GitHub Secrets |
+| 役割                | 担当作業                                                       | 主なツール                                 |
+| ------------------- | -------------------------------------------------------------- | ------------------------------------------ |
+| 開発者              | チケット受領、実装、Dev Sandbox 確認、`/sfdx-review`、PR 作成  | Claude Code、Dev Sandbox、Backlog MCP、git |
+| レビュアー / リード | CI 結果と AI レビューの確認、Approve、`develop` へマージ       | GitHub PR、GitHub Actions                  |
+| DevOps / 管理者     | 設定変更（Sandbox 追加・閾値調整）、ナレッジ更新、リリース実行 | `sfdx-pipeline.config.yml`、GitHub Secrets |
 
-The dividing line: **anything the config can change, change in the config.** If
-you need to edit the workflow YAML, a config option is missing — open an issue.
+境界線：**設定で変えられることは設定で変える**。ワークフロー YAML を編集する
+必要が出たら、それは設定項目が足りていないサインです（Issue を立ててください）。
 
 ---
 
-## One-time setup
+## 事前準備（初回のみ）
+
+### 1. パイプラインの導入
 
 ```bash
 cd my-sfdx-project
@@ -56,8 +73,34 @@ npx sfdx-devops-kit init .
 npm install
 ```
 
-Edit `sfdx-pipeline.config.yml` (org aliases, thresholds, Backlog project key),
-then:
+### 2. 設定を自社環境に合わせる
+
+`sfdx-pipeline.config.yml` の org 別名、閾値、Backlog プロジェクトキーを編集：
+
+```yaml
+project_name: "proj-crm"
+
+environments:
+  dev:
+    alias: "DevSandbox"
+    type: "sandbox"
+  st:
+    alias: "STSandbox"
+    type: "sandbox"
+    is_test_target: true
+  uat:
+    alias: "UATSandbox"
+    type: "sandbox"
+  prod:
+    alias: "Production"
+    type: "production"
+    deploy_manifest: "manifest/package.xml"
+
+backlog_integration:
+  project_key: "PROJ"
+```
+
+### 3. 検証と Secrets 登録
 
 ```bash
 $ npx sfdx-devops-kit validate
@@ -71,113 +114,168 @@ Required GitHub Secrets:
   SF_PROD_AUTH_URL         → Production (production)
 ```
 
-Register each secret:
+各 org の認証 URL を取得して GitHub Secrets に登録します。
 
 ```bash
 sf org display --target-org STSandbox --verbose | grep "Sfdx Auth Url"
+# → force://PlatformCLI::<REDACTED>@<your-org>.my.salesforce.com
 gh secret set SF_ST_AUTH_URL   # paste the value when prompted, do not put it in shell history
 ```
 
-> An auth URL is a credential. It must never reach a commit, a ticket comment, a
-> log or a generated document.
+> **注意**：認証 URL はパスワード同等です。コミット・チケット・ログ・生成
+> ドキュメントに絶対に残さないでください。
 
-Claude Code and rtk-sf:
+### 4. Claude Code と rtk-sf
 
 ```bash
 pip install "git+https://github.com/furuCRM-Inc/rtk-sf.git@v0.10.0"
 claude mcp add rtk-sf -- python3 -m rtk_sf serve
 python3 -m rtk_sf index
-npx sfdx-devops-kit doctor
+npx sfdx-devops-kit doctor   # 環境の健全性チェック
 ```
 
-Register your Backlog MCP server too — the skills use it for ticket access.
+Backlog MCP サーバーも Claude Code に登録しておきます（チケット参照・コメント
+投稿・ステータス更新に使用）。
 
-For production, create a GitHub `Production` environment with required
-reviewers. The generated `deploy` job declares `environment:`, so a release
-cannot reach production without approval.
+### 5. 本番デプロイに承認を付ける（推奨）
+
+GitHub の Settings → Environments で `Production` 環境を作り、Required
+reviewers を設定します。生成済みワークフローの `deploy` ジョブは
+`environment: ${{ needs.plan.outputs.environment }}` を宣言しているため、承認
+なしに本番へ流れません。
 
 ---
 
-## Step 1 — Ticket
+## Step 1: チケット作成
 
-Create the ticket in Backlog. The key goes into the branch name, so note it
-(e.g. `PROJ-142`).
+Backlog に起票します。**課題キーがそのままブランチ名に入る**ため、キーは必ず
+確認してください（例：`PROJ-142`）。
+
+チケット記載例：
 
 ```text
-Title: Discount approval on Opportunity (over 30% requires approval)
+件名: 商談の割引申請（30% 超は承認必須）
 
-Context:
-  Discounts above 30% can currently be closed without approval.
+背景:
+  現在 30% を超える割引が承認なしで確定できてしまう。
 
-Acceptance criteria:
-  - A discount rate can be requested from the Opportunity page
-  - Requests above 30% enter the approval process
-  - 30% or below applies immediately
-  - An Opportunity awaiting approval cannot move to Closed Won
+受入条件:
+  - 商談画面から割引率を申請できる
+  - 30% を超える申請は承認プロセスに回る
+  - 30% 以下は即時反映される
+  - 承認待ちの商談は「確定」に遷移できない
 
-Expected scope:
-  Opportunity (fields), Apex controller, LWC, approval process
+影響範囲（想定）:
+  Opportunity（項目追加）、Apex コントローラ、LWC、承認プロセス
 ```
 
-Assign yourself and set the status to `処理中` (in progress).
+担当者は自分をアサインし、ステータスを `処理中` にします。`/sfdx-ticket` を使う場合は
+`assigneeId` まで設定されます（担当者が空のチケットはボードやフィルタから漏れます）。
 
-## Step 2 — Start
+作成されたチケット（受入条件が Markdown で描画されます。以下スクリーンショットは
+社内情報をマスクしたものです）:
 
-Branch naming: `feature/<TICKET-KEY>-<short-summary>`.
+![Backlog に作成された検証チケット](images/backlog-ticket.png)
+
+---
+
+## Step 2: 着手
+
+### ブランチを作る
+
+命名規則：`feature/<課題キー>-<英小文字の要約>`
 
 ```bash
-git switch develop && git pull
+git switch develop
+git pull
 git switch -c feature/PROJ-142-discount-approval
+```
 
+キーが正しく解決できるか、その場で確認できます：
+
+```bash
 $ npx sfdx-devops-kit ticket
 branch: feature/PROJ-142-discount-approval
 ticket: PROJ-142
+status mapping:
+  in_progress    → 処理中
+  review_ready   → 処理済み
+  closed         → 完了
 ```
 
-`ticket: (unresolved)` means the branch name or `project_key` needs fixing.
+`ticket: (unresolved)` と出る場合はブランチ名か `project_key` を見直します。
 
-Then ask Claude Code to survey the existing implementation. It reads through
-rtk-sf's MCP tools (compressed specs, class skeletons) instead of whole files,
-which keeps the survey cheap and the blast radius visible.
+### 既存実装を調べる（rtk-sf 経由）
 
-## Step 3 — Build
-
-Build **with Claude Code or by hand** — every gate from Step 4 onward is identical
-either way, and the ticket link comes from the branch name, not from the tooling.
-
-### 3a. With Claude Code
+Claude Code へそのまま依頼します。
 
 ```text
-Add Discount__c (Percent) and Discount_Status__c (Picklist) to Opportunity, and
-create OpportunityDiscountController.requestDiscount(Id oppId, Decimal rate).
-Over 30% goes to the approval process, 30% or below applies immediately.
-Follow knowledge/sfdx/coding-rules.md. Include tests: happy path, the 30%
-boundary, error paths, and bulk.
+PROJ-142 に着手します。Opportunity の割引に関わる既存実装を調べてください。
 ```
 
-The rules the review enforces live in `knowledge/sfdx/coding-rules.md`. To change
-what is enforced, edit that file — not the code.
+エージェントは rtk-sf の MCP ツールを使い、ファイル全文ではなく圧縮仕様で
+把握します（`search_codebase` → `query_compressed_spec` → `get_relations` →
+`get_object_schema`）。トークンを節約しつつ、影響範囲の見落としを防げます。
 
-### 3b. By hand
+---
 
-Ordinary SFDX development in VS Code works unchanged. Without `/sfdx-review` you
-still get the ticket record:
+## Step 3: 実装
+
+実装は **Claude Code でも手作業でも構いません**。以降のゲート（Step 4 以降）は
+どちらでも同一です。
+
+### 3a. Claude Code で実装する
+
+Claude Code への依頼例：
+
+```text
+Opportunity に Discount__c（Percent）と Discount_Status__c（Picklist: 申請中/承認済/却下）を
+追加し、OpportunityDiscountController.requestDiscount(Id oppId, Decimal rate) を作成してください。
+- 30% 超は承認プロセスへ、30% 以下は即時反映
+- knowledge/sfdx/coding-rules.md に従うこと（ユーザーモード DML、ID ハードコード禁止）
+- テストクラスも同時に作成（正常系・境界値 30%・異常系・バルク）
+```
+
+守るべきルールは `knowledge/sfdx/coding-rules.md` にあり、レビューも同じ
+ファイルを参照します。ルールを変えたいときはコードではなくこのファイルを
+変更してください。
+
+### 3b. 手作業で実装する
+
+VS Code など通常の SFDX 開発で構いません。キットは実装方法に依存せず、
+チケットとの紐付けは**ブランチ名**（`feature/PROJ-142-…`）だけで成立します。
+`/sfdx-review` を使わない場合も、成果物はコマンドで生成してチケットに貼れます：
 
 ```bash
-npx sfdx-devops-kit deliverables --base origin/develop --format md   # the comment body
-npx sfdx-devops-kit backlog --phase review_ready                     # the MCP calls to make
+npx sfdx-devops-kit deliverables --base origin/develop --format md   # コメント本文
+npx sfdx-devops-kit backlog --phase review_ready                     # 投稿すべき MCP 呼び出し
 ```
 
-### Either way
+### いずれの場合も
+
+ローカルの静的チェックはこの時点で回せます：
 
 ```bash
 npx sfdx-devops-kit run lint prettier
 ```
 
-## Step 4 — Verify in your dev sandbox
+---
+
+## Step 4: 個人 Dev Sandbox で確認
+
+まず何が実行されるかを確認（org には触りません）：
 
 ```bash
-$ npx sfdx-devops-kit run --env dev --dry-run    # prints commands, touches nothing
+$ npx sfdx-devops-kit run --env dev --dry-run
+▶ validate_deploy: Validation deploy to DevSandbox (dry run)
+  $ sf project deploy start --json --target-org DevSandbox --test-level RunLocalTests --dry-run --wait 60
+▶ unit_test: Apex unit tests and coverage gate
+    gate: org-wide coverage must reach 75%
+```
+
+問題なければ実行：
+
+```bash
 $ npx sfdx-devops-kit run --env dev --skip e2e_test
 ▶ code_analyzer: Salesforce Code Analyzer
   ✔ No violations at severity <= 3 (2 total finding(s))
@@ -191,100 +289,172 @@ $ npx sfdx-devops-kit run --env dev --skip e2e_test
 ✔ pipeline passed — 4/4 stage(s) passed, coverage 87%
 ```
 
-Then exercise the feature in the org UI.
+Salesforce 画面で実際の挙動（承認プロセスへの遷移など）を確認します。
 
-## Step 5 — Local AI review
+---
+
+## Step 5: レビュー（AI または人手）
+
+AI レビューを使わない運用でも、Step 3b のコマンドで成果物コメントを作り、
+チケットに貼ってから PR に進んでください。以下は AI レビューを使う場合です。
+
+### ローカル AI レビュー
 
 ```text
 /sfdx-review
 ```
 
+出力例：
+
 ```text
-Review — PROJ-142 (feature/PROJ-142-discount-approval)
+レビュー結果 — PROJ-142（feature/PROJ-142-discount-approval）
 
 critical: 0
 major: 1
-  - OpportunityDiscountController.cls:48
-    Writing method has no CRUD/FLS enforcement. Use `update as user` or
-    stripInaccessible (coding-rules.md §2)
+  - force-app/main/default/classes/OpportunityDiscountController.cls:48
+    更新系メソッドに CRUD/FLS の強制がありません。`update as user` か
+    stripInaccessible を使ってください（coding-rules.md 2）
 minor: 1
-  - OpportunityDiscountControllerTest.cls:72 — the exact 30% boundary is uncovered
+  - OpportunityDiscountControllerTest.cls:72
+    境界値 30% ちょうどのケースが未カバー
 
-Deliverables: 6 components (CustomField 2 / ApexClass 2 / LWC 1 / Flow 1)
-Backlog: commented on PROJ-142. No critical findings, so the status moved to 処理済み.
+成果物: 6 コンポーネント（CustomField 2 / ApexClass 2 / LightningComponentBundle 1 / Flow 1）
+Backlog: PROJ-142 にコメントを投稿しました。critical が 0 件のため
+         ステータスを「処理済み」に更新しました。
 ```
 
-The Backlog comment carries the findings, the delivered-metadata table **and the
-pull request link** (resolved with `gh pr view`; before the PR exists it falls back
-to a compare URL, labelled as such). Run the skill again after opening the PR when
-you want the real PR URL recorded on the ticket.
+Backlog に投稿されるコメント（成果物一覧を含む）：
 
-With even one critical finding the status does not move — fix and re-run.
+```markdown
+## レビュー結果
 
-## Step 6 — Pull request and CI
+- critical: 0 / major: 1 / minor: 1
+- major: OpportunityDiscountController.cls:48 CRUD/FLS の強制が不足
+
+## 成果物（メタデータ） / Delivered metadata
+
+- 課題キー: PROJ-142
+- ブランチ: `feature/PROJ-142-discount-approval`
+- PR: https://github.com/your-org/your-repo/pull/128 （open）
+- コンポーネント数: 6
+
+| 種別 (Type)              | API 名 (Name)                       | 変更 (Change) |
+| ------------------------ | ----------------------------------- | ------------- |
+| ApexClass                | `OpportunityDiscountController`     | added         |
+| ApexClass                | `OpportunityDiscountControllerTest` | added         |
+| CustomField              | `Opportunity.Discount__c`           | added         |
+| CustomField              | `Opportunity.Discount_Status__c`    | added         |
+| Flow                     | `Discount_Approval`                 | added         |
+| LightningComponentBundle | `discountRequest`                   | added         |
+
+**種別ごとの件数:** ApexClass 2 / CustomField 2 / Flow 1 / LightningComponentBundle 1
+```
+
+`critical` が 1 件でもあればステータスは進みません。指摘を直して再度
+`/sfdx-review` を実行します。
+
+**PR リンクについて**: コメントには PR の URL が自動で入ります（`gh pr view` で
+解決）。PR 作成前は GitHub の比較リンクにフォールバックし「未作成（比較リンク）」
+と明示されます。チケットに実 PR の URL を残したい場合は、**PR 作成後にもう一度
+`/sfdx-review` を実行**してください（レビュー前後の 2 回投稿が推奨運用です）。
+
+---
+
+## Step 6: PR 作成と CI
 
 ```bash
-git commit -am "feat(PROJ-142): add discount approval flow"
+git add -A
+git commit -m "feat(PROJ-142): add discount approval flow"
 git push -u origin feature/PROJ-142-discount-approval
 gh pr create --base develop --fill
 ```
 
-Paste the deliverables into the PR body:
+PR 本文（テンプレートが自動で入ります）。成果物欄には次の出力を貼ります：
 
 ```bash
 npx sfdx-devops-kit deliverables --base origin/develop --format md
 ```
 
-| Job            | What it does                                             | Result          |
-| -------------- | -------------------------------------------------------- | --------------- |
-| `plan`         | Validates config, publishes the plan to the step summary | ✅              |
-| `quality`      | ESLint / Prettier / Code Analyzer                        | ✅              |
-| `validate`     | Dry-run deploy to ST + coverage gate                     | ✅ coverage 87% |
-| `deliverables` | Attaches the component list and `package.xml`            | ✅ 6 components |
+CI の実行結果例：
 
-`deploy` never runs on a pull request, so a fork PR cannot deploy into an org.
+| ジョブ         | 内容                                           | 結果            |
+| -------------- | ---------------------------------------------- | --------------- |
+| `plan`         | 設定検証、plan 出力（Step Summary に掲載）     | ✅              |
+| `quality`      | ESLint / Prettier / Code Analyzer              | ✅              |
+| `validate`     | ST への dry-run 検証デプロイ＋カバレッジゲート | ✅ coverage 87% |
+| `deliverables` | 成果物一覧と `package.xml` を artifact 添付    | ✅ 6 components |
 
-A failure names the component and the org's own message:
+`deploy` ジョブは **PR では実行されません**（`github.event_name != 'pull_request'`）。
+フォークからの PR が org にデプロイできないための安全弁です。
+
+CI が落ちた場合の読み方：
 
 ```text
 ✖ validate_deploy: Deploy failed — 1 component error(s), e.g.
   ApexClass OpportunityDiscountController: Variable does not exist: Discount_Status__c
 ```
 
-## Step 7 — Review and merge
+原因のコンポーネントと Salesforce のメッセージがそのまま出るので、ログを
+掘る必要はありません。
 
-1. All CI jobs green, coverage acceptable.
-2. AI review findings resolved, or deferred with a stated reason.
-3. The deliverables list matches the ticket's scope — no stray profile diffs.
-4. The [review checklist](../knowledge/sfdx/review-checklist.md).
+---
 
-Approve and merge to `develop` (squash recommended).
+## Step 7: レビューとマージ
 
-## Step 8 — Automatic ST deployment
+レビュアーの確認項目：
 
-Pushing `develop` runs the pipeline including `deploy`:
+1. CI 4 ジョブすべて成功（特に `validate` のカバレッジ）
+2. AI レビューコメントの指摘が解消済み、または妥当な理由で見送り
+3. 成果物一覧がチケットのスコープと一致（無関係な profile 差分などが無いか）
+4. [レビューチェックリスト](../knowledge/sfdx/review-checklist.md) の項目
+
+問題なければ Approve して `develop` へマージします（Squash 推奨）。
+
+---
+
+## Step 8: ST 環境への自動デプロイ
+
+`develop` への push でワークフローが動き、`deploy` ジョブが実行されます。
 
 ```text
-▶ deploy: Deploy to STSandbox            ✔ Succeeded: 6 component(s); coverage 87%
-▶ integration_test: Integration tests    ✔ ok
-▶ e2e_test: E2E tests                    ✔ ok
-▶ documentation: system docs (rtk-sf)    ✔ ok
+▶ deploy: Deploy to STSandbox
+  ✔ Succeeded: 6 component(s); coverage 87%
+▶ integration_test: Integration tests
+  ✔ ok
+▶ e2e_test: E2E tests
+  ✔ ok
+▶ documentation: Generate system documentation (rtk-sf)
+  ✔ ok
 ```
 
-Artifacts: `playwright-report`, `system-documentation`. ST is shared — fix
-forward rather than leaving it broken.
+生成物は artifact として保存されます：`playwright-report`、
+`system-documentation`（機能マトリクス・シーケンス図・ERD など）。
 
-## Step 9 — UAT
+失敗した場合は `develop` を修正する前方修正が原則です（ST は共有環境なので
+放置しないこと）。
+
+---
+
+## Step 9: UAT 展開
+
+リリース候補が揃ったら、手動実行で UAT に展開します。
 
 ```bash
 gh workflow run sfdx-ci-cd.yml -f environment=uat
 ```
 
-Business users run acceptance here. Defects go back to Step 2.
+GitHub UI からは Actions → SFDX CI/CD → Run workflow → environment に `uat`。
 
-## Step 10 — Production release
+UAT では業務部門が受入確認を行います。不具合はチケットに追記し、Step 2 に
+戻ります。
 
-Freeze the release contents:
+---
+
+## Step 10: 本番リリース
+
+### 1. リリース対象を確定する
+
+リリースに含まれるメタデータを一覧化します：
 
 ```bash
 npx sfdx-devops-kit deliverables --base origin/main --head origin/develop --format md
@@ -292,125 +462,151 @@ npx sfdx-devops-kit deliverables --base origin/main --head origin/develop \
   --format package-xml --out manifest/package.xml
 ```
 
-Validate against production before releasing:
+`prod` 環境が `deploy_manifest: manifest/package.xml` を指している場合、この
+`package.xml` がそのままリリース対象になります。
+
+### 2. 事前検証（本番への dry-run）
 
 ```bash
 $ npx sfdx-devops-kit run validate_deploy unit_test --env prod
 ▶ validate_deploy: Validation deploy to Production (dry run)
   ✔ Succeeded: 18 component(s); coverage 81%
+▶ unit_test: Apex unit tests and coverage gate
+  ✔ Coverage 81% meets the 75% threshold
 ```
 
-Open the release PR (`develop` → `main`), merge, then:
+### 3. リリース PR とマージ
+
+```bash
+gh pr create --base main --head develop --title "release: 2026-10-01" --fill
+```
+
+マージ後、本番デプロイを実行します。`Production` 環境の承認者が承認するまで
+ジョブは待機します。
 
 ```bash
 gh workflow run sfdx-ci-cd.yml -f environment=prod -f deploy=true
 ```
 
-The job waits for an environment approver.
+### 4. 削除を含む場合
 
-**Deletions** cannot ride in `package.xml` — the generated manifest says so in a
-comment. Prepare `destructiveChanges.xml` and write the steps on the ticket.
+`package.xml` では削除を表現できません。生成された manifest にも注意書きが
+入ります。削除は `destructiveChanges.xml` を用意し、リリース手順として
+チケットに明記してください。
 
-Afterwards: run post-deploy steps (permission sets, data fixes, scheduled jobs),
-verify the main journeys, close the ticket, and regenerate docs
-(`python3 -m rtk_sf docs all --output-dir docs`).
+### 5. リリース後
 
-### Rollback
+- 事後作業（権限セット割当、データ移行、スケジュールジョブ設定）を実施
+- 主要業務フローの動作確認
+- Backlog のチケットを `完了` へ更新
+- ドキュメント再生成：`python3 -m rtk_sf docs all --output-dir docs`
 
-| Situation                    | Action                                                                |
-| ---------------------------- | --------------------------------------------------------------------- |
-| Previous state is deployable | Validate then deploy the previous release tag                         |
-| A new field is the problem   | Keep the field, disable the behavior through a custom-metadata switch |
-| Something must be removed    | Prepare `destructiveChanges.xml` and check the impact first           |
+### 6. 切り戻し
 
-Salesforce has no "undo deployment". Writing the rollback plan on the ticket
-_before_ release is the real safety net.
+| 状況               | 対応                                                             |
+| ------------------ | ---------------------------------------------------------------- |
+| 直前の状態に戻せる | 1 つ前のリリースタグから `validate_deploy` → `deploy`            |
+| 追加した項目が問題 | 項目は残し、機能フラグ（カスタムメタデータ）で無効化するのが安全 |
+| 削除が必要         | `destructiveChanges.xml` を作成し、影響を確認してから実行        |
+
+Salesforce は「デプロイの取り消し」が無いため、**切り戻し手順をリリース前に
+チケットへ書いておく**ことが実質的な保険になります。
 
 ---
 
-## Exception flows
+## 例外フロー
 
-**Coverage below the threshold**
+### カバレッジが閾値に届かない
 
 ```text
 ✖ unit_test: Coverage 68% is below the 75% threshold
 ```
 
-Add tests. Lowering the threshold is a team decision recorded in the config.
+テストを追加してください。閾値を下げるのは、チームで合意して
+`sfdx-pipeline.config.yml` を変更する場合のみです（設定変更は履歴に残ります）。
 
-**Tests pass but the deploy fails**
+### テストは全件成功しているのにデプロイが失敗する
 
 ```text
 ✖ validate_deploy: Deploy failed — org coverage requirement not met:
-  選択された Apex Class のテストカバー率は 0% です。…
+  選択された Apex Class のテストカバー率は 0% です。少なくとも 75% 以上の
+  テストカバー率が必要です。
 ```
 
-That is Salesforce's own requirement, reported in the org's language. Include
-tests that cover the deployed classes, or revisit `test_level`.
+Salesforce 側の要件です。対象クラスを含むテストを実行対象に含めるか、
+`test_level` を見直してください。
 
-**Analyzer engines will not start**
+### 解析エンジンが起動しない
 
 ```text
 ✖ code_analyzer: Code Analyzer could not start 3 engine(s) (pmd, cpd, sfge),
   so the code was not analyzed: Could not locate Java v11.0.0+.
 ```
 
-Install a JDK 11+. CI already does this via `setup-java`. Locally you can narrow
-to `rule_selector: eslint`, which needs no Java.
+JDK を導入してください（CI は `setup-java` で自動設定済み）。ローカルで
+一時的に回すだけなら `rule_selector: eslint` で Java 不要のエンジンのみに
+絞れます。
 
-**Hotfix**
+### 緊急対応（hotfix）
 
 ```bash
 git switch -c hotfix/PROJ-160-null-pointer main
+# 修正とテストを最小限で実装
 npx sfdx-devops-kit run --env st --skip e2e_test
-# /sfdx-review → PR to main → approve → release
+# /sfdx-review → PR を main へ → 承認 → 本番リリース
 ```
 
-Branch from `main` and merge back into both `main` and `develop`. Do not skip
-gates; if you must, record why on the ticket.
+`main` から切り、`main` と `develop` の両方へマージします。品質ゲートは
+緊急時でも飛ばさないでください（飛ばした場合はチケットに理由を残すこと）。
 
 ---
 
-## Routine
+## 定期運用
 
-| Cadence       | Work                                                                        |
-| ------------- | --------------------------------------------------------------------------- |
-| Every release | Record deliverables on the ticket, regenerate docs                          |
-| Weekly        | Review CI failure patterns, add lessons to `knowledge/sfdx/coding-rules.md` |
-| Monthly       | Revisit thresholds, update dependencies (`npm audit`)                       |
-| Quarterly     | Refresh secrets after sandbox refreshes, audit permissions                  |
+| 頻度         | 作業                                                                            |
+| ------------ | ------------------------------------------------------------------------------- |
+| リリースごと | 成果物一覧をチケットへ記録、ドキュメント再生成                                  |
+| 週次         | CI 失敗傾向の確認、`knowledge/sfdx/coding-rules.md` へ学びを追記                |
+| 月次         | 閾値（カバレッジ・深刻度）の妥当性をレビュー、依存パッケージ更新（`npm audit`） |
+| 四半期       | Sandbox リフレッシュ後の Secrets 更新、権限設定の棚卸し                         |
 
-When adding a rule, write down _why_. The AI review quotes that file as its
-justification.
+ルールを増やすときは、必ず `knowledge/sfdx/coding-rules.md` に「なぜ」を
+書いてください。AI レビューはこのファイルを根拠として引用します。
 
 ---
 
-## Quick reference
+## 早見表
 
-| Goal                          | Command                                                                                      |
-| ----------------------------- | -------------------------------------------------------------------------------------------- |
-| Install                       | `npx sfdx-devops-kit init .`                                                                 |
-| Validate config, list secrets | `npx sfdx-devops-kit validate`                                                               |
-| See what will run             | `npx sfdx-devops-kit plan --env st`                                                          |
-| Run locally                   | `npx sfdx-devops-kit run --env dev`                                                          |
-| One or more stages            | `npx sfdx-devops-kit run code_analyzer unit_test`                                            |
-| Show commands only            | `npx sfdx-devops-kit run --dry-run`                                                          |
-| Deliverables                  | `npx sfdx-devops-kit deliverables --base origin/develop`                                     |
-| Release manifest              | `… --base origin/main --head origin/develop --format package-xml --out manifest/package.xml` |
-| Ticket key                    | `npx sfdx-devops-kit ticket`                                                                 |
-| Environment check             | `npx sfdx-devops-kit doctor`                                                                 |
-| AI review                     | `/sfdx-review`                                                                               |
-| Record deliverables           | `/sfdx-deliverables`                                                                         |
+### コマンド
 
-| When                                       | Status     | Who                |
-| ------------------------------------------ | ---------- | ------------------ |
-| Starting work                              | `処理中`   | Developer (manual) |
-| `/sfdx-review` with zero critical findings | `処理済み` | Skill (automatic)  |
-| After release                              | `完了`     | Developer or lead  |
+| 目的                    | コマンド                                                                                                                    |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 導入                    | `npx sfdx-devops-kit init .`                                                                                                |
+| 設定検証と Secrets 確認 | `npx sfdx-devops-kit validate`                                                                                              |
+| 実行内容の確認          | `npx sfdx-devops-kit plan --env st`                                                                                         |
+| ローカル実行            | `npx sfdx-devops-kit run --env dev`                                                                                         |
+| 特定ステージのみ        | `npx sfdx-devops-kit run code_analyzer unit_test`                                                                           |
+| 実行せず確認            | `npx sfdx-devops-kit run --dry-run`                                                                                         |
+| 成果物一覧              | `npx sfdx-devops-kit deliverables --base origin/develop`                                                                    |
+| リリース manifest       | `npx sfdx-devops-kit deliverables --base origin/main --head origin/develop --format package-xml --out manifest/package.xml` |
+| 課題キー確認            | `npx sfdx-devops-kit ticket`                                                                                                |
+| 環境診断                | `npx sfdx-devops-kit doctor`                                                                                                |
+| AI レビュー             | `/sfdx-review`（Claude Code）                                                                                               |
+| 成果物記録のみ          | `/sfdx-deliverables`（Claude Code）                                                                                         |
 
-| Purpose | Branch                     | Merges into          |
-| ------- | -------------------------- | -------------------- |
-| Feature | `feature/PROJ-142-summary` | `develop`            |
-| Bug fix | `bugfix/PROJ-151-summary`  | `develop`            |
-| Hotfix  | `hotfix/PROJ-160-summary`  | `main` and `develop` |
-| Release | `develop` → `main`         | `main`               |
+### ステータス遷移
+
+| タイミング                      | Backlog ステータス | 誰が               |
+| ------------------------------- | ------------------ | ------------------ |
+| 着手時                          | `処理中`           | 開発者（手動）     |
+| `/sfdx-review` で critical 0 件 | `処理済み`         | スキルが自動更新   |
+| リリース完了後                  | `完了`             | 開発者またはリード |
+
+### ブランチ
+
+| 用途       | 命名                       | マージ先            |
+| ---------- | -------------------------- | ------------------- |
+| 機能開発   | `feature/PROJ-142-summary` | `develop`           |
+| 不具合修正 | `bugfix/PROJ-151-summary`  | `develop`           |
+| 緊急対応   | `hotfix/PROJ-160-summary`  | `main` と `develop` |
+| リリース   | `develop` → `main`         | `main`              |
