@@ -211,11 +211,16 @@ function cmdRun({ positionals, flags }) {
     console.log(JSON.stringify({ ok: outcome.ok, coverage: outcome.coverage, results: outcome.results }, null, 2));
   } else {
     const ran = outcome.results.filter((entry) => entry.status !== "skipped");
-    console.log(
-      `\n${outcome.ok ? "✔ pipeline passed" : "✖ pipeline failed"} — ` +
-        `${ran.filter((r) => r.status === "passed").length}/${ran.length} stage(s) passed` +
-        (outcome.coverage !== null ? `, coverage ${outcome.coverage}%` : ""),
-    );
+    if (dryRun) {
+      // Nothing executed, so reporting "0/8 passed" would be misleading.
+      console.log(`\n✔ ${ran.length} stage(s) planned — nothing was executed (--dry-run)`);
+    } else {
+      console.log(
+        `\n${outcome.ok ? "✔ pipeline passed" : "✖ pipeline failed"} — ` +
+          `${ran.filter((r) => r.status === "passed").length}/${ran.length} stage(s) passed` +
+          (outcome.coverage !== null ? `, coverage ${outcome.coverage}%` : ""),
+      );
+    }
   }
   return outcome.ok ? EXIT_OK : EXIT_GATE;
 }

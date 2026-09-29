@@ -75,7 +75,7 @@ jobs:
           fi
 
   lint:
-    name: Format and secret hygiene
+    name: Templates and secret hygiene
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -83,8 +83,11 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
+          cache: npm
 
-      - name: Templates must be parseable
+      - run: npm ci
+
+      - name: Templates must parse
         run: |
           node -e "
             import('js-yaml').then(async ({ load }) => {
@@ -94,27 +97,11 @@ jobs:
                 'templates/github/workflows/sfdx-ci-cd.yml',
                 '.github/workflows/ci.yml',
               ]) {
-                load(fs.readFileSync(file, 'utf8'));
+                if (!load(fs.readFileSync(file, 'utf8'))) throw new Error('empty document: ' + file);
                 console.log('ok', file);
               }
               JSON.parse(fs.readFileSync('templates/mcp/.mcp.json', 'utf8'));
               console.log('ok templates/mcp/.mcp.json');
-            })
-          "
-        env:
-          NODE_PATH: node_modules
-
-      - run: npm ci
-
-      - name: Re-check templates with dependencies installed
-        run: |
-          node -e "
-            import('js-yaml').then(async ({ load }) => {
-              const fs = await import('node:fs');
-              for (const file of ['templates/config/sfdx-pipeline.config.yml','templates/github/workflows/sfdx-ci-cd.yml']) {
-                const doc = load(fs.readFileSync(file, 'utf8'));
-                if (!doc) throw new Error('empty document: ' + file);
-              }
             })
           "
 
