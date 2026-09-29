@@ -299,11 +299,11 @@ $ npx sfdx-devops-kit run --skip e2e_test
   ✔ ok
 ▶ code_analyzer: Salesforce Code Analyzer
   ✔ No violations at severity <= 3 (2 total finding(s))
-▶ validate_deploy: Validation deploy to spk-loop (dry run)
+▶ validate_deploy: Validation deploy to my-scratch-org (dry run)
   ✔ Succeeded: 2 component(s); coverage 100%
 ▶ unit_test: Apex unit tests and coverage gate
   ✔ Coverage 100% meets the 75% threshold
-▶ deploy: Deploy to spk-loop
+▶ deploy: Deploy to my-scratch-org
   ✔ Succeeded: 2 component(s); coverage 100%
 · integration_test: skipped — pipeline_settings.integration_test.enabled is false
 · e2e_test: skipped — excluded by --skip e2e_test
