@@ -323,7 +323,16 @@ Backlog: PROJ-142 にコメントを投稿しました。critical が 0 件の�
          ステータスを「処理済み」に更新しました。
 ```
 
-Backlog に投稿されるコメント（成果物一覧を含む）：
+実際の Backlog 画面（社内情報はマスク済み）:
+
+![レビュー結果と成果物テーブル](images/backlog-review-comment.png)
+
+コメント末尾にはチケット単位の `package.xml` が付き、その下にステータス遷移が
+記録されます:
+
+![package.xml とステータス遷移の記録](images/backlog-manifest-status.png)
+
+投稿されるコメントの元テキスト（成果物一覧を含む）：
 
 ```markdown
 ## レビュー結果
