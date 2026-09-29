@@ -105,6 +105,10 @@ const DEFAULTS = {
     // here explicitly, otherwise the skills post their comment and report that
     // the status was left alone rather than guessing an id.
     status_ids: {},
+    // Backlog renders a comment as Markdown or in Backlog notation, per project
+    // (project.textFormattingRule). A Markdown table in a Backlog-notation
+    // project renders as literal pipes, so the dialect is configurable.
+    comment_format: "markdown",
     mcp: {
       server_name: "backlog",
       runtime: "docker",
@@ -115,6 +119,8 @@ const DEFAULTS = {
       post_on_review: true,
       include_package_xml: true,
       include_non_metadata: true,
+      // A reviewer should reach the code from the ticket in one click.
+      include_pr_link: true,
     },
   },
 };
@@ -418,6 +424,13 @@ function validateBacklog(config, errors, warnings) {
     if (!backlog.status_mapping?.[key]) {
       errors.push(`backlog_integration.status_mapping.${key} is required.`);
     }
+  }
+
+  if (!["markdown", "backlog"].includes(backlog.comment_format)) {
+    errors.push(
+      `backlog_integration.comment_format: "${backlog.comment_format}" is invalid ` +
+        '(expected "markdown" or "backlog"). Check the project\'s textFormattingRule in Backlog.',
+    );
   }
 
   const mcp = backlog.mcp ?? {};

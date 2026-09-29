@@ -22,9 +22,13 @@ develop-first flow). If the base ref is missing locally, run `git fetch origin`
 first — do not silently fall back to a different base, because that would change
 the component list.
 
-The Markdown output is already a Backlog-ready comment: a table of
-`type | API name | change`, per-type counts, and a collapsed list of
-non-metadata changes (tests, CI config, docs).
+The Markdown output is already a Backlog-ready comment: the ticket key, the
+branch, the **pull request link**, a table of `type | API name | change`, per-type
+counts, and a collapsed list of non-metadata changes (tests, CI config, docs).
+
+The PR link comes from `gh pr view` for the current branch. Before the PR is
+opened it falls back to a GitHub compare URL, which is marked as such — so a
+reviewer is never handed a link that looks like a PR but is not one.
 
 ## 2. Sanity-check the list
 

@@ -81,6 +81,13 @@ add `backlog_integration.mcp.tool_prefix` if the project sets one):
 `update_issue` also accepts `comment`, so the comment and the status change can
 be one call when you prefer.
 
+The comment includes the **pull request link** automatically
+(`backlog_integration.deliverables.include_pr_link`, on by default): `gh` resolves
+it for the current branch, and before the PR exists a GitHub compare link is used
+instead. Run this skill _after_ opening the PR when you want the real PR URL on
+the ticket; run it before, and re-run after, when you want both the pre-PR review
+and the final link.
+
 Compose one comment with two parts:
 
 1. **Review result** — findings grouped by severity, or an explicit "no findings".

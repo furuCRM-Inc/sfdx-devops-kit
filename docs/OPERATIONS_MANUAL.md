@@ -2,6 +2,8 @@
 
 The full flow from ticket to release, with the commands and output you actually
 see. Examples use a fictional project `PROJ` (discount approval on Opportunity).
+Ready-made configurations, including a ten-environment setup, are in
+[pipeline samples](PIPELINE_SAMPLES.md).
 
 日本語版：[OPERATIONS_MANUAL.ja.md](OPERATIONS_MANUAL.ja.md)
 
@@ -140,6 +142,11 @@ which keeps the survey cheap and the blast radius visible.
 
 ## Step 3 — Build
 
+Build **with Claude Code or by hand** — every gate from Step 4 onward is identical
+either way, and the ticket link comes from the branch name, not from the tooling.
+
+### 3a. With Claude Code
+
 ```text
 Add Discount__c (Percent) and Discount_Status__c (Picklist) to Opportunity, and
 create OpportunityDiscountController.requestDiscount(Id oppId, Decimal rate).
@@ -150,6 +157,18 @@ boundary, error paths, and bulk.
 
 The rules the review enforces live in `knowledge/sfdx/coding-rules.md`. To change
 what is enforced, edit that file — not the code.
+
+### 3b. By hand
+
+Ordinary SFDX development in VS Code works unchanged. Without `/sfdx-review` you
+still get the ticket record:
+
+```bash
+npx sfdx-devops-kit deliverables --base origin/develop --format md   # the comment body
+npx sfdx-devops-kit backlog --phase review_ready                     # the MCP calls to make
+```
+
+### Either way
 
 ```bash
 npx sfdx-devops-kit run lint prettier
@@ -195,7 +214,11 @@ Deliverables: 6 components (CustomField 2 / ApexClass 2 / LWC 1 / Flow 1)
 Backlog: commented on PROJ-142. No critical findings, so the status moved to 処理済み.
 ```
 
-The Backlog comment carries the findings **and** the delivered-metadata table.
+The Backlog comment carries the findings, the delivered-metadata table **and the
+pull request link** (resolved with `gh pr view`; before the PR exists it falls back
+to a compare URL, labelled as such). Run the skill again after opening the PR when
+you want the real PR URL recorded on the ticket.
+
 With even one critical finding the status does not move — fix and re-run.
 
 ## Step 6 — Pull request and CI

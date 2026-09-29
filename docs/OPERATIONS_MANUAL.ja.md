@@ -1,16 +1,18 @@
 # 運用マニュアル
 
 チケット作成からリリースまでの流れを、実際のコマンドと出力例で示します。例は
-架空プロジェクト `PROJ`（商談の割引申請機能）を題材にしています。
+架空プロジェクト `PROJ`（商談の割引申請機能）を題材にしています。設定そのものの
+実例は [パイプラインサンプル集](PIPELINE_SAMPLES.md)（環境 10 個の構成例を含む）を
+参照してください。
 
 - [全体像](#全体像)
 - [役割と責務](#役割と責務)
 - [事前準備（初回のみ）](#事前準備初回のみ)
 - [Step 1: チケット作成](#step-1-チケット作成)
 - [Step 2: 着手](#step-2-着手)
-- [Step 3: 実装](#step-3-実装)
+- [Step 3: 実装（AI / 手作業）](#step-3-実装)
 - [Step 4: 個人 Dev Sandbox で確認](#step-4-個人-dev-sandbox-で確認)
-- [Step 5: ローカル AI レビュー](#step-5-ローカル-ai-レビュー)
+- [Step 5: レビュー（AI / 人手）](#step-5-レビューai-または人手)
 - [Step 6: PR 作成と CI](#step-6-pr-作成と-ci)
 - [Step 7: レビューとマージ](#step-7-レビューとマージ)
 - [Step 8: ST 環境への自動デプロイ](#step-8-st-環境への自動デプロイ)
@@ -213,6 +215,11 @@ PROJ-142 に着手します。Opportunity の割引に関わる既存実装を�
 
 ## Step 3: 実装
 
+実装は **Claude Code でも手作業でも構いません**。以降のゲート（Step 4 以降）は
+どちらでも同一です。
+
+### 3a. Claude Code で実装する
+
 Claude Code への依頼例：
 
 ```text
@@ -226,6 +233,19 @@ Opportunity に Discount__c（Percent）と Discount_Status__c（Picklist: 申�
 守るべきルールは `knowledge/sfdx/coding-rules.md` にあり、レビューも同じ
 ファイルを参照します。ルールを変えたいときはコードではなくこのファイルを
 変更してください。
+
+### 3b. 手作業で実装する
+
+VS Code など通常の SFDX 開発で構いません。キットは実装方法に依存せず、
+チケットとの紐付けは**ブランチ名**（`feature/PROJ-142-…`）だけで成立します。
+`/sfdx-review` を使わない場合も、成果物はコマンドで生成してチケットに貼れます：
+
+```bash
+npx sfdx-devops-kit deliverables --base origin/develop --format md   # コメント本文
+npx sfdx-devops-kit backlog --phase review_ready                     # 投稿すべき MCP 呼び出し
+```
+
+### いずれの場合も
 
 ローカルの静的チェックはこの時点で回せます：
 
@@ -267,7 +287,12 @@ Salesforce 画面で実際の挙動（承認プロセスへの遷移など）を
 
 ---
 
-## Step 5: ローカル AI レビュー
+## Step 5: レビュー（AI または人手）
+
+AI レビューを使わない運用でも、Step 3b のコマンドで成果物コメントを作り、
+チケットに貼ってから PR に進んでください。以下は AI レビューを使う場合です。
+
+### ローカル AI レビュー
 
 ```text
 /sfdx-review
@@ -304,6 +329,7 @@ Backlog に投稿されるコメント（成果物一覧を含む）：
 
 - 課題キー: PROJ-142
 - ブランチ: `feature/PROJ-142-discount-approval`
+- PR: https://github.com/your-org/your-repo/pull/128 （open）
 - コンポーネント数: 6
 
 | 種別 (Type)              | API 名 (Name)                       | 変更 (Change) |
@@ -320,6 +346,11 @@ Backlog に投稿されるコメント（成果物一覧を含む）：
 
 `critical` が 1 件でもあればステータスは進みません。指摘を直して再度
 `/sfdx-review` を実行します。
+
+**PR リンクについて**: コメントには PR の URL が自動で入ります（`gh pr view` で
+解決）。PR 作成前は GitHub の比較リンクにフォールバックし「未作成（比較リンク）」
+と明示されます。チケットに実 PR の URL を残したい場合は、**PR 作成後にもう一度
+`/sfdx-review` を実行**してください（レビュー前後の 2 回投稿が推奨運用です）。
 
 ---
 

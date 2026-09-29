@@ -5,7 +5,7 @@ project and get CI/CD, quality gates, AI-assisted review and per-ticket metadata
 records — configured in `sfdx-pipeline.config.yml`, not scattered across workflow
 files.
 
-[日本語版 README](README.ja.md) · [Operations manual](docs/OPERATIONS_MANUAL.md) · [Configuration reference](docs/CONFIG_REFERENCE.md)
+[日本語版 README](README.ja.md) · [Operations manual](docs/OPERATIONS_MANUAL.md) · [Pipeline samples](docs/PIPELINE_SAMPLES.md) · [Configuration reference](docs/CONFIG_REFERENCE.md)
 
 ```bash
 npx sfdx-devops-kit init .      # scaffold pipeline, CI, Claude skills, knowledge base
@@ -267,8 +267,49 @@ set `ai_assist.rtk_sf.required: true` to make it mandatory instead.
 
 ## Team workflow
 
-See the [operations manual](docs/OPERATIONS_MANUAL.md) for the full flow with
-worked examples — ticket, branch, build, review, PR, CI, release and rollback.
+---
+
+## Usage flow (ticket → build → PR → review → release)
+
+Step-by-step commands and real output are in the
+[operations manual](docs/OPERATIONS_MANUAL.md); ready-made configurations are in
+[pipeline samples](docs/PIPELINE_SAMPLES.md).
+
+```mermaid
+flowchart LR
+    A["1. Backlog<br/>ticket created"] --> B["2. Branch<br/>feature/KEY-123-…"]
+    B --> C1["3a. Build with Claude Code<br/>/sfdx-ticket → implement"]
+    B --> C2["3b. Build by hand<br/>ordinary SFDX work"]
+    C1 --> D["4. Verify locally<br/>run --env dev"]
+    C2 --> D
+    D --> E["5. Review<br/>/sfdx-review or a human"]
+    E --> F["6. Open the PR<br/>CI runs"]
+    F --> G["7. Approve → merge<br/>auto-deploy to ST"]
+    G --> H["8. UAT → production<br/>approval-gated"]
+```
+
+**The pipeline and its gates are the same with or without AI.** Claude Code makes
+building and reviewing faster; the guarantees come from the CLI and CI.
+
+| Step               | With AI assistance                                                        | By hand                                     |
+| ------------------ | ------------------------------------------------------------------------- | ------------------------------------------- |
+| 1. File the ticket | `/sfdx-ticket` calls `add_issue` with acceptance criteria                 | Create it in Backlog                        |
+| 2. Start           | `/sfdx-ticket` reads it, plans, moves the status                          | Branch and set the status                   |
+| 3. Build           | rtk-sf specs to survey, then Apex/LWC plus tests                          | Ordinary SFDX development                   |
+| 4. Verify          | `npx sfdx-devops-kit run --env dev`                                       | The same command                            |
+| 5. Review          | `/sfdx-review` posts findings, deliverables and the PR link to the ticket | Paste `deliverables` output into the ticket |
+| 6. PR              | `gh pr create` with the deliverables in the body                          | Open it on GitHub                           |
+| 7–8                | Identical (CI → approve → ST → UAT → production)                          | Identical                                   |
+
+A manual team still gets the ticket record:
+
+```bash
+npx sfdx-devops-kit deliverables --base origin/develop --format md   # the comment body
+npx sfdx-devops-kit backlog --phase review_ready                     # the MCP calls to make
+```
+
+See the [operations manual](docs/OPERATIONS_MANUAL.md) for worked examples of
+every step, including release and rollback.
 
 | Role      | Work                                                                                                |
 | --------- | --------------------------------------------------------------------------------------------------- |

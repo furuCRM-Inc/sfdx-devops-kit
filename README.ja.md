@@ -3,7 +3,7 @@
 **YAML 1 枚でパイプライン全体を制御します。** 任意の Salesforce DX プロジェクトに導入するだけで、CI/CD・品質ゲート・AI レビュー・チケット単位の成果物記録が揃います。設定は
 `sfdx-pipeline.config.yml` に集約され、ワークフローファイルを触る必要はありません。
 
-[English README](README.md) ｜ [運用マニュアル](docs/OPERATIONS_MANUAL.ja.md) ｜ [設定リファレンス](docs/CONFIG_REFERENCE.md)
+[English README](README.md) ｜ [運用マニュアル](docs/OPERATIONS_MANUAL.ja.md) ｜ [パイプラインサンプル](docs/PIPELINE_SAMPLES.md) ｜ [設定リファレンス](docs/CONFIG_REFERENCE.md)
 
 ```bash
 npx sfdx-devops-kit init .      # パイプライン・CI・Claude スキル・ナレッジを配置
@@ -200,6 +200,45 @@ python3 -m rtk_sf index
 `setup-project.sh` は rtk-sf が存在すれば上記を自動実行します。未導入の場合は `documentation` ステージのみスキップし、他は通常動作します（必須にするには `ai_assist.rtk_sf.required: true`）。
 
 ---
+
+## 使用フロー（チケット → 実装 → PR → レビュー → リリース）
+
+詳細な手順・実出力例は [運用マニュアル](docs/OPERATIONS_MANUAL.ja.md)、設定の実例は
+[パイプラインサンプル集](docs/PIPELINE_SAMPLES.md) を参照してください。
+
+```mermaid
+flowchart LR
+    A["1. Backlog<br/>チケット起票"] --> B["2. ブランチ作成<br/>feature/KEY-123-…"]
+    B --> C1["3a. Claude Code で実装<br/>/sfdx-ticket → 実装"]
+    B --> C2["3b. 手動で実装<br/>通常の SFDX 開発"]
+    C1 --> D["4. ローカル検証<br/>run --env dev"]
+    C2 --> D
+    D --> E["5. レビュー<br/>/sfdx-review または人手"]
+    E --> F["6. PR 作成<br/>CI が自動実行"]
+    F --> G["7. Approve → merge<br/>ST へ自動デプロイ"]
+    G --> H["8. UAT → 本番<br/>承認付き環境"]
+```
+
+**AI を使う場合も使わない場合も、パイプラインとゲートは同一です。** Claude Code は
+実装とレビューを速くしますが、品質ゲート（Code Analyzer・カバレッジ・検証デプロイ）は
+CLI と CI が担保します。
+
+| ステップ    | AI 支援あり                                                     | 手動のみ                                  |
+| ----------- | --------------------------------------------------------------- | ----------------------------------------- |
+| 1. 起票     | `/sfdx-ticket` が受入条件つきで `add_issue`                     | Backlog 画面で起票                        |
+| 2. 着手     | `/sfdx-ticket` が `get_issue` → 計画、`update_issue` で処理中へ | ブランチ作成、ステータス変更              |
+| 3. 実装     | rtk-sf の圧縮仕様で既存実装を把握 → Apex/LWC＋テスト生成        | 通常の SFDX 開発（VS Code 等）            |
+| 4. 検証     | `npx sfdx-devops-kit run --env dev`                             | 同一コマンド                              |
+| 5. レビュー | `/sfdx-review` が指摘＋成果物＋PR リンクをチケットへ投稿        | `deliverables` の出力を手でチケットに貼る |
+| 6. PR       | `gh pr create`（本文に成果物一覧）                              | GitHub 画面で作成                         |
+| 7〜8        | 共通（CI → Approve → ST → UAT → 本番）                          | 共通                                      |
+
+手動運用でもチケットに成果物を残せます:
+
+```bash
+npx sfdx-devops-kit deliverables --base origin/develop --format md   # コメント本文
+npx sfdx-devops-kit backlog --phase review_ready                     # 投稿すべき MCP 呼び出し
+```
 
 ## 運用
 

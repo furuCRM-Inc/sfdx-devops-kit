@@ -12,6 +12,7 @@ import {
   parseNameStatus,
   renderMarkdown,
   renderPackageXml,
+  resolvePullRequest,
 } from "../src/deliverables.mjs";
 import { extractTicketKey, statusFor, ticketContext } from "../src/backlog.mjs";
 import { validateConfig } from "../src/config.mjs";
@@ -210,4 +211,82 @@ test("ticketContext reports the mapping alongside the key", () => {
   assert.equal(context.status_mapping.review_ready, "処理済み");
   assert.equal(statusFor(config, "in_progress"), "処理中");
   assert.throws(() => statusFor(config, "archived"), /No Backlog status mapped/);
+});
+
+// ---------------------------------------------------------------------------
+// Pull request link — a reviewer should reach the code from the ticket.
+// ---------------------------------------------------------------------------
+
+test("an open pull request is rendered with its number and state", () => {
+  const markdown = renderMarkdown(deriveDeliverables([]), {
+    ticket: "PROJ-1",
+    pull_request: {
+      url: "https://github.com/acme/app/pull/128",
+      number: 128,
+      state: "open",
+      source: "gh",
+    },
+  });
+  assert.match(markdown, /- PR #128: https:\/\/github\.com\/acme\/app\/pull\/128 （open）/);
+});
+
+test("before a PR exists the compare link is labelled as not opened", () => {
+  const markdown = renderMarkdown(deriveDeliverables([]), {
+    ticket: "PROJ-1",
+    pull_request: {
+      url: "https://github.com/acme/app/compare/main...feature/PROJ-1?expand=1",
+      number: null,
+      state: "not opened",
+      source: "compare",
+    },
+  });
+  // The reader must not mistake a compare URL for a real pull request.
+  assert.match(markdown, /- PR: .*compare.*（未作成（比較リンク））/);
+});
+
+test("no PR information produces no PR line rather than an empty one", () => {
+  const markdown = renderMarkdown(deriveDeliverables([]), { ticket: "PROJ-1" });
+  assert.ok(!markdown.includes("- PR"));
+});
+
+test("resolvePullRequest never throws and always reports its source", () => {
+  const resolved = resolvePullRequest({ cwd: process.cwd() });
+  assert.ok(["gh", "compare", "none"].includes(resolved.source));
+  assert.equal(typeof resolved.url, "string");
+});
+
+test("a git revision is not used as a compare base", () => {
+  // `--base HEAD~2` is valid for a diff but meaningless in a compare URL, so the
+  // fallback must not produce github.com/.../compare/HEAD~2...branch.
+  const resolved = resolvePullRequest({ cwd: process.cwd(), base: "HEAD~2" });
+  if (resolved.source === "compare") {
+    assert.ok(!resolved.url.includes("HEAD~2"), `compare URL leaked a revision: ${resolved.url}`);
+    assert.match(resolved.url, /\/compare\/[\w.\-/]+\.\.\./);
+  }
+});
+
+test("Backlog notation is emitted when the project is not set to Markdown", () => {
+  const entries = parseNameStatus(
+    [`M\t${PREFIX}/classes/OrderService.cls`, `A\t${PREFIX}/flows/Order_Followup.flow-meta.xml`].join("\n"),
+  );
+  const body = renderMarkdown(deriveDeliverables(entries), {
+    ticket: "PROJ-9",
+    format: "backlog",
+    pull_request: { url: "https://github.com/acme/app/pull/3", number: 3, state: "open", source: "gh" },
+  });
+
+  // Backlog notation: ** headings and a |…|h header row.
+  assert.match(body, /^\*\* 成果物/m);
+  assert.match(body, /\| 種別 \(Type\) \| API 名 \(Name\) \| 変更 \(Change\) \|h/);
+  assert.match(body, /\| ApexClass \| OrderService \| modified \|/);
+  assert.match(body, /- PR #3: https:\/\/github\.com\/acme\/app\/pull\/3/);
+  // Markdown artifacts must not leak into the notation dialect.
+  assert.ok(!body.includes("| --- |"), "no Markdown separator row");
+  assert.ok(!body.includes("`"), "no Markdown code spans");
+  assert.ok(!body.includes("<details>"), "no HTML");
+});
+
+test("the default dialect stays Markdown", () => {
+  const body = renderMarkdown(deriveDeliverables([]), { ticket: "PROJ-9" });
+  assert.match(body, /^## 成果物/m);
 });

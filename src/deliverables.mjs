@@ -252,10 +252,16 @@ export function deriveDeliverables(entries, { includeNonMetadata = true, package
 /**
  * Render a Backlog-ready comment listing the ticket's deliverables.
  *
+ * `context.format` selects the dialect: "markdown" (default) or "backlog" for a
+ * project whose `textFormattingRule` is Backlog notation, where a Markdown table
+ * would render as literal pipe characters.
+ *
  * @param {{components: object[], other: object[], counts: object}} deliverables
- * @param {{ticket?: string, base?: string, head?: string, branch?: string}} context
+ * @param {{ticket?: string, base?: string, head?: string, branch?: string,
+ *          pull_request?: object, format?: "markdown"|"backlog"}} context
  */
 export function renderMarkdown(deliverables, context = {}) {
+  if (context.format === "backlog") return renderBacklogNotation(deliverables, context);
   const { components, other, counts } = deliverables;
   const lines = [];
 
@@ -263,6 +269,13 @@ export function renderMarkdown(deliverables, context = {}) {
   lines.push("");
   if (context.ticket) lines.push(`- 課題キー: ${context.ticket}`);
   if (context.branch) lines.push(`- ブランチ: \`${context.branch}\``);
+  // A reviewer should be able to reach the code from the ticket in one click.
+  if (context.pull_request?.url) {
+    const pr = context.pull_request;
+    const label = pr.number ? `PR #${pr.number}` : "PR";
+    const state = pr.source === "compare" ? "未作成（比較リンク）" : pr.state;
+    lines.push(`- ${label}: ${pr.url}${state ? ` （${state}）` : ""}`);
+  }
   if (context.base) lines.push(`- 差分範囲: \`${context.base}...${context.head ?? "HEAD"}\``);
   lines.push(`- コンポーネント数: ${components.length}`);
   lines.push("");
@@ -292,6 +305,54 @@ export function renderMarkdown(deliverables, context = {}) {
     }
     lines.push("");
     lines.push("</details>");
+  }
+
+  return lines.join("\n") + "\n";
+}
+
+/**
+ * Same content in Backlog notation, for projects not set to Markdown.
+ *
+ * Backlog notation uses `**` for headings, `|…|h` for a header row and `-` for
+ * lists; a Markdown table would appear as raw pipes there.
+ */
+function renderBacklogNotation(deliverables, context = {}) {
+  const { components, other, counts } = deliverables;
+  const lines = ["** 成果物（メタデータ） / Delivered metadata", ""];
+
+  if (context.ticket) lines.push(`- 課題キー: ${context.ticket}`);
+  if (context.branch) lines.push(`- ブランチ: ${context.branch}`);
+  if (context.pull_request?.url) {
+    const pr = context.pull_request;
+    const label = pr.number ? `PR #${pr.number}` : "PR";
+    const state = pr.source === "compare" ? "未作成（比較リンク）" : pr.state;
+    lines.push(`- ${label}: ${pr.url}${state ? ` （${state}）` : ""}`);
+  }
+  if (context.base) lines.push(`- 差分範囲: ${context.base}...${context.head ?? "HEAD"}`);
+  lines.push(`- コンポーネント数: ${components.length}`);
+  lines.push("");
+
+  if (components.length === 0) {
+    lines.push("この差分に Salesforce メタデータの変更はありません。");
+  } else {
+    lines.push("| 種別 (Type) | API 名 (Name) | 変更 (Change) |h");
+    for (const component of components) {
+      lines.push(`| ${component.type} | ${component.name} | ${component.change} |`);
+    }
+    lines.push("");
+    lines.push(
+      "種別ごとの件数: " +
+        Object.entries(counts)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([type, count]) => `${type} ${count}`)
+          .join(" / "),
+    );
+  }
+
+  if (other.length > 0) {
+    lines.push("");
+    lines.push(`** メタデータ以外の変更 (${other.length})`);
+    for (const entry of other) lines.push(`- ${entry.type}: ${entry.name} (${entry.change})`);
   }
 
   return lines.join("\n") + "\n";
@@ -342,6 +403,88 @@ function escapeXml(value) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/**
+ * Resolve the pull request for a branch.
+ *
+ * Uses `gh` when available, because it knows the authenticated host and the
+ * default branch. Without `gh` (or before a PR exists) it falls back to a
+ * compare URL built from the remote, so a reviewer still gets a link rather than
+ * nothing. Never throws: a missing PR is normal before the PR is opened.
+ *
+ * @returns {{url: string, number: number|null, state: string, title: string,
+ *            source: "gh"|"compare"|"none"}}
+ */
+export function resolvePullRequest({ cwd = process.cwd(), branch, base } = {}) {
+  const head = branch || currentBranch(cwd);
+
+  try {
+    const raw = execFileSync(
+      "gh",
+      ["pr", "view", head, "--json", "url,number,state,title,baseRefName"],
+      { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    );
+    const data = JSON.parse(raw);
+    if (data.url) {
+      return {
+        url: data.url,
+        number: data.number ?? null,
+        state: String(data.state ?? "").toLowerCase(),
+        title: data.title ?? "",
+        source: "gh",
+      };
+    }
+  } catch {
+    // No gh, not authenticated, or no PR for this branch yet.
+  }
+
+  const compare = compareUrl({ cwd, head, base });
+  return compare
+    ? { url: compare, number: null, state: "not opened", title: "", source: "compare" }
+    : { url: "", number: null, state: "unknown", title: "", source: "none" };
+}
+
+/** A github.com compare URL for the branch, or "" when the remote is not GitHub. */
+function compareUrl({ cwd, head, base }) {
+  let remote = "";
+  try {
+    remote = execFileSync("git", ["remote", "get-url", "origin"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "";
+  }
+
+  const match = /github\.com[:/]+([^/]+)\/(.+?)(?:\.git)?$/.exec(remote);
+  if (!match || !head) return "";
+
+  // A compare URL needs two refs GitHub can resolve. `--base` is often a git
+  // revision (HEAD~2, a SHA) which is meaningful locally but not in a URL, so
+  // anything that is not branch-like falls back to the remote's default branch.
+  const requested = String(base ?? "").replace(/^origin\//, "");
+  const branchLike = requested && !/[~^:]|^[0-9a-f]{7,40}$/i.test(requested);
+  const target = branchLike ? requested : defaultBranch(cwd);
+
+  return `https://github.com/${match[1]}/${match[2]}/compare/${target}...${encodeURIComponent(head)}?expand=1`;
+}
+
+/** The remote's default branch, falling back to main. */
+function defaultBranch(cwd) {
+  try {
+    const ref = execFileSync("git", ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    const name = ref.replace(/^origin\//, "");
+    if (name) return name;
+  } catch {
+    // No remote HEAD (a fresh clone with --single-branch, or no remote).
+  }
+  return "main";
 }
 
 /** Current branch name, or "" when git is unavailable. */

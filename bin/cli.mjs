@@ -29,6 +29,7 @@ import {
   readDiff,
   renderMarkdown,
   renderPackageXml,
+  resolvePullRequest,
 } from "../src/deliverables.mjs";
 import { ticketContext } from "../src/backlog.mjs";
 import { detectRtkSf, rtkAdvice, hasIndex } from "../src/rtk.mjs";
@@ -243,11 +244,15 @@ function cmdDeliverables({ flags }) {
 
   const deliverables = deriveDeliverables(entries);
   const ticket = ticketContext(config, { cwd: process.cwd() });
+  const includePr = config.backlog_integration?.deliverables?.include_pr_link !== false;
+  const pullRequest = includePr
+    ? resolvePullRequest({ cwd: process.cwd(), branch: ticket.branch, base })
+    : null;
   const format = flags.format ?? "md";
 
   let output;
   if (format === "json") {
-    output = JSON.stringify({ ...ticket, base, head, ...deliverables }, null, 2);
+    output = JSON.stringify({ ...ticket, base, head, pull_request: pullRequest, ...deliverables }, null, 2);
   } else if (format === "package-xml") {
     output = renderPackageXml(deliverables, { apiVersion: flags["api-version"] });
   } else if (format === "md") {
@@ -256,6 +261,8 @@ function cmdDeliverables({ flags }) {
       branch: ticket.branch,
       base,
       head,
+      pull_request: pullRequest,
+      format: flags["comment-format"] ?? config.backlog_integration?.comment_format ?? "markdown",
     });
   } else {
     console.error(`✖ Unknown --format "${format}" (expected md, json or package-xml).`);
@@ -315,15 +322,22 @@ function cmdBacklog({ flags }) {
   }
 
   let comment = "";
+  let pullRequest = null;
   if (flags.comment === undefined || flags.comment) {
     const base = flags.base ?? "origin/main";
     try {
       const deliverables = deriveDeliverables(readDiff({ base, head: flags.head ?? "HEAD" }));
+      pullRequest =
+        config.backlog_integration?.deliverables?.include_pr_link !== false
+          ? resolvePullRequest({ cwd: process.cwd(), branch: context.branch, base })
+          : null;
       comment = renderMarkdown(deliverables, {
         ticket: context.ticket,
         branch: context.branch,
         base,
         head: flags.head ?? "HEAD",
+        pull_request: pullRequest,
+        format: flags["comment-format"] ?? config.backlog_integration?.comment_format ?? "markdown",
       });
     } catch (error) {
       comment = "";
@@ -347,6 +361,7 @@ function cmdBacklog({ flags }) {
   const payload = {
     server: tools.server,
     ticket: context.ticket,
+    pull_request: pullRequest,
     unresolved_reason: context.unresolved_reason,
     phase,
     status,
@@ -360,6 +375,12 @@ function cmdBacklog({ flags }) {
 
   console.log(`MCP server: ${tools.server}`);
   console.log(`ticket:     ${context.ticket ?? `(unresolved) — ${context.unresolved_reason}`}`);
+  if (pullRequest?.url) {
+    console.log(
+      `PR:         ${pullRequest.url}` +
+        (pullRequest.source === "compare" ? "  (not opened yet — compare link)" : `  (${pullRequest.state})`),
+    );
+  }
   console.log(
     `status:     ${phase} → "${status.name}"` +
       (status.id === null
@@ -577,6 +598,7 @@ OPTIONS
   --base <ref>         Diff base for deliverables (default: origin/main)
   --head <ref>         Diff head for deliverables (default: HEAD)
   --format <f>         deliverables output: md | json | package-xml
+  --comment-format <f> Backlog comment dialect: markdown (default) | backlog
   --out <file>         Write output to a file instead of stdout
   --phase <p>          Backlog phase (backlog command): in_progress | review_ready | closed
   --config <file>      Use a specific config file
