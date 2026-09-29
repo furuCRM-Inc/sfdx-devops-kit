@@ -28,10 +28,10 @@ disabling E2E for one release means editing YAML that also controls deployment.
 
 Here, the config is the single source of truth for three consumers:
 
-| Consumer | How it reads the config |
-|---|---|
-| GitHub Actions | `plan --json` emits an `enabled` map; each step is gated by it |
-| Local CLI | `run` executes the same plan, with the same gates |
+| Consumer           | How it reads the config                                                            |
+| ------------------ | ---------------------------------------------------------------------------------- |
+| GitHub Actions     | `plan --json` emits an `enabled` map; each step is gated by it                     |
+| Local CLI          | `run` executes the same plan, with the same gates                                  |
 | Claude Code skills | `/sfdx-review` and `/sfdx-deliverables` read thresholds, rules and Backlog mapping |
 
 ## What you get
@@ -101,7 +101,7 @@ environments:
   st:
     alias: "STSandbox"
     type: "sandbox"
-    is_test_target: true      # CI validates and runs E2E here
+    is_test_target: true # CI validates and runs E2E here
   prod:
     alias: "Production"
     type: "production"
@@ -110,9 +110,9 @@ environments:
 pipeline_settings:
   code_analyzer:
     enabled: true
-    engine: "code-analyzer"   # or "scanner" for the legacy plugin
+    engine: "code-analyzer" # or "scanner" for the legacy plugin
     rule_selector: "Recommended"
-    severity_threshold: 3     # fail at this severity or worse (1=Critical … 5=Info)
+    severity_threshold: 3 # fail at this severity or worse (1=Critical … 5=Info)
   unit_test:
     enabled: true
     test_level: "RunLocalTests"
@@ -123,8 +123,8 @@ pipeline_settings:
 
 ai_assist:
   rtk_sf:
-    enabled: true             # on by default
-    required: false           # missing rtk-sf skips its stages, never fails
+    enabled: true # on by default
+    required: false # missing rtk-sf skips its stages, never fails
 
 backlog_integration:
   project_key: "PROJECT_KEY"
@@ -155,17 +155,17 @@ SF_PROD_AUTH_URL         → Production (production)
 
 Run in this order; each can be disabled independently.
 
-| Stage | Gate |
-|---|---|
-| `lint` | ESLint exit status |
-| `prettier` | formatting check |
-| `code_analyzer` | no violation at or below `severity_threshold` |
-| `validate_deploy` | dry-run deployment validates |
-| `unit_test` | org coverage ≥ `coverage_threshold` (reads the validation deploy — Apex tests run once) |
-| `deploy` | real deployment succeeds (CI runs this only outside pull requests) |
-| `integration_test` | Newman or your own command |
-| `e2e_test` | Playwright or your own command |
-| `documentation` | rtk-sf regenerates the system document set |
+| Stage              | Gate                                                                                    |
+| ------------------ | --------------------------------------------------------------------------------------- |
+| `lint`             | ESLint exit status                                                                      |
+| `prettier`         | formatting check                                                                        |
+| `code_analyzer`    | no violation at or below `severity_threshold`                                           |
+| `validate_deploy`  | dry-run deployment validates                                                            |
+| `unit_test`        | org coverage ≥ `coverage_threshold` (reads the validation deploy — Apex tests run once) |
+| `deploy`           | real deployment succeeds (CI runs this only outside pull requests)                      |
+| `integration_test` | Newman or your own command                                                              |
+| `e2e_test`         | Playwright or your own command                                                          |
+| `documentation`    | rtk-sf regenerates the system document set                                              |
 
 ```bash
 npx sfdx-devops-kit run --env uat            # one environment
@@ -195,10 +195,10 @@ npx sfdx-devops-kit deliverables --base origin/develop --format package-xml \
 - 課題キー: DEMO-42
 - コンポーネント数: 2
 
-| 種別 (Type) | API 名 (Name) | 変更 (Change) |
-| --- | --- | --- |
-| ApexClass | `AccountNameFormatter` | added |
-| CustomField | `Order__c.Status__c` | modified |
+| 種別 (Type) | API 名 (Name)          | 変更 (Change) |
+| ----------- | ---------------------- | ------------- |
+| ApexClass   | `AccountNameFormatter` | added         |
+| CustomField | `Order__c.Status__c`   | modified      |
 ```
 
 File paths become components: an LWC bundle is one entry, a `-meta.xml`
@@ -212,10 +212,10 @@ ticket.
 
 ## Claude Code integration
 
-| Command | What it does |
-|---|---|
-| `/sfdx-review` | Reviews the diff against your rules, posts findings **and** the delivered metadata to the Backlog ticket, then moves the ticket to `review_ready` only if nothing critical is open |
-| `/sfdx-deliverables` | Records what a ticket shipped, with an optional per-ticket `package.xml` |
+| Command              | What it does                                                                                                                                                                       |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/sfdx-review`       | Reviews the diff against your rules, posts findings **and** the delivered metadata to the Backlog ticket, then moves the ticket to `review_ready` only if nothing critical is open |
+| `/sfdx-deliverables` | Records what a ticket shipped, with an optional per-ticket `package.xml`                                                                                                           |
 
 `/sfdx-ticket` creates a ticket and turns an assigned one into a plan.
 
@@ -270,23 +270,23 @@ set `ai_assist.rtk_sf.required: true` to make it mandatory instead.
 See the [operations manual](docs/OPERATIONS_MANUAL.md) for the full flow with
 worked examples — ticket, branch, build, review, PR, CI, release and rollback.
 
-| Role | Work |
-|---|---|
-| Developer | Take the ticket → build with Claude Code → verify in a dev sandbox → `/sfdx-review` → open the PR |
-| Reviewer | Read CI results and the AI review comment, approve, merge to `develop` |
-| DevOps | Change `sfdx-pipeline.config.yml` to add a sandbox or adjust a gate; keep `knowledge/sfdx/` current |
+| Role      | Work                                                                                                |
+| --------- | --------------------------------------------------------------------------------------------------- |
+| Developer | Take the ticket → build with Claude Code → verify in a dev sandbox → `/sfdx-review` → open the PR   |
+| Reviewer  | Read CI results and the AI review comment, approve, merge to `develop`                              |
+| DevOps    | Change `sfdx-pipeline.config.yml` to add a sandbox or adjust a gate; keep `knowledge/sfdx/` current |
 
 ---
 
 ## Troubleshooting
 
-| Symptom | Cause |
-|---|---|
-| `Secret SF_ST_AUTH_URL is not set` | Add the secret `validate` names; get the value from `sf org display --target-org <alias> --verbose` |
-| Analyzer reports `UninstantiableEngineError` | No JDK. Install Java 11+, or use `rule_selector: eslint` |
-| `Coverage gate cannot be evaluated` | The deploy ran no Apex tests — `test_level` is `NoTestRun` |
-| `cannot also be provided when using --source-dir` | Two deployment selectors on one environment; `validate` catches this |
-| `deliverables` lists nothing | The base ref is missing locally — `git fetch origin` |
+| Symptom                                           | Cause                                                                                               |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `Secret SF_ST_AUTH_URL is not set`                | Add the secret `validate` names; get the value from `sf org display --target-org <alias> --verbose` |
+| Analyzer reports `UninstantiableEngineError`      | No JDK. Install Java 11+, or use `rule_selector: eslint`                                            |
+| `Coverage gate cannot be evaluated`               | The deploy ran no Apex tests — `test_level` is `NoTestRun`                                          |
+| `cannot also be provided when using --source-dir` | Two deployment selectors on one environment; `validate` catches this                                |
+| `deliverables` lists nothing                      | The base ref is missing locally — `git fetch origin`                                                |
 
 ---
 

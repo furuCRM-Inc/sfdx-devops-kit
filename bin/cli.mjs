@@ -431,6 +431,32 @@ function cmdDoctor({ flags }) {
         ? `.mcp.json registers "${config.backlog_integration.mcp?.server_name}"`
         : ".mcp.json does not register the Backlog MCP server (see the operations manual)",
     });
+
+    // A comma-joined --enable-toolsets value matches no toolset and leaves the
+    // server with zero tools, which looks like "Backlog is broken" rather than a
+    // configuration mistake. Catch it here instead.
+    if (registered) {
+      let commaJoined = false;
+      try {
+        const parsed = JSON.parse(fs.readFileSync(mcpFile, "utf8"));
+        const args = parsed.mcpServers[config.backlog_integration.mcp?.server_name ?? "backlog"].args ?? [];
+        commaJoined = args.some(
+          (arg, index) =>
+            (arg === "--enable-toolsets" && String(args[index + 1] ?? "").includes(",")) ||
+            /^--enable-toolsets=.*,/.test(String(arg)),
+        );
+      } catch {
+        commaJoined = false;
+      }
+      checks.push({
+        name: "backlog toolsets",
+        ok: !commaJoined,
+        optional: false,
+        detail: commaJoined
+          ? "--enable-toolsets uses a comma-separated value, which disables ALL tools; repeat the flag once per toolset"
+          : "--enable-toolsets is passed correctly (or omitted)",
+      });
+    }
     const hasDomain = Boolean(process.env.BACKLOG_DOMAIN);
     const hasKey = Boolean(process.env.BACKLOG_API_KEY);
     checks.push({

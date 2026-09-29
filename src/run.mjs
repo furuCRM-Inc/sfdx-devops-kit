@@ -100,6 +100,31 @@ export function runStage(stage, { cwd, dryRun, state, config, emit = () => {} })
   }
 
   const failed = commandResults.find((entry) => entry.status !== 0);
+
+  // Exit 127 is "command not found", which on a fresh checkout almost always
+  // means dependencies are missing. Saying "exit 127" sends the reader hunting
+  // through logs for a cause the shell already told us.
+  if (failed && failed.status === 127) {
+    const message =
+      `command not found: ${failed.command.split(" ")[0]} — ` +
+      `install dependencies first (npm install) or set a different command in ` +
+      `pipeline_settings.${stage.id}.command`;
+    emit({ type: "fail", stage, message });
+    return { id: stage.id, status: "failed", message };
+  }
+
+  // ESLint exits 2 when its glob matches no files, which is the normal state of
+  // a project that has no LWC yet. Failing the build for that would mean every
+  // new project starts red.
+  if (failed && (stage.id === "lint" || stage.id === "prettier")) {
+    const output = `${failed.stdout}${failed.stderr}`;
+    if (/No files matching the pattern|No files found/i.test(output)) {
+      const message = "no files to check yet (the glob matched nothing) — treated as a pass";
+      emit({ type: "pass", stage, message });
+      return { id: stage.id, status: "passed", message };
+    }
+  }
+
   const detail = interpret(stage, commandResults, { cwd, state, config });
   const status = detail.ok === false || (detail.ok === undefined && failed) ? "failed" : "passed";
   const message = detail.message ?? (failed ? `exit ${failed.status}` : "ok");

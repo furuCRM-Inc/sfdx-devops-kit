@@ -20,10 +20,10 @@ Sandbox の追加、カバレッジ閾値の変更、特定ステージの停止
 
 Salesforce のパイプラインは、閾値が埋め込まれ org 別名がハードコードされた 400 行のワークフローになりがちで、作った本人以外が変更できなくなります。本キットでは設定ファイルが 3 つの利用者にとっての単一の真実です。
 
-| 利用者 | 設定の読み方 |
-|---|---|
-| GitHub Actions | `plan --json` が出す `enabled` マップで各ステップを制御 |
-| ローカル CLI | `run` が同じ plan を同じゲートで実行 |
+| 利用者             | 設定の読み方                                                                  |
+| ------------------ | ----------------------------------------------------------------------------- |
+| GitHub Actions     | `plan --json` が出す `enabled` マップで各ステップを制御                       |
+| ローカル CLI       | `run` が同じ plan を同じゲートで実行                                          |
 | Claude Code スキル | `/sfdx-review`・`/sfdx-deliverables` が閾値・ルール・Backlog マッピングを参照 |
 
 ## 提供機能
@@ -80,7 +80,7 @@ environments:
   st:
     alias: "STSandbox"
     type: "sandbox"
-    is_test_target: true      # CI の検証デプロイと E2E 実行先
+    is_test_target: true # CI の検証デプロイと E2E 実行先
   prod:
     alias: "Production"
     type: "production"
@@ -89,9 +89,9 @@ environments:
 pipeline_settings:
   code_analyzer:
     enabled: true
-    engine: "code-analyzer"   # legacy プラグインなら "scanner"
+    engine: "code-analyzer" # legacy プラグインなら "scanner"
     rule_selector: "Recommended"
-    severity_threshold: 3     # この深刻度以上で失敗（1=Critical … 5=Info）
+    severity_threshold: 3 # この深刻度以上で失敗（1=Critical … 5=Info）
   unit_test:
     enabled: true
     test_level: "RunLocalTests"
@@ -102,8 +102,8 @@ pipeline_settings:
 
 ai_assist:
   rtk_sf:
-    enabled: true             # 既定で有効
-    required: false           # 未導入なら該当ステージをスキップ（失敗させない）
+    enabled: true # 既定で有効
+    required: false # 未導入なら該当ステージをスキップ（失敗させない）
 
 backlog_integration:
   project_key: "PROJECT_KEY"
@@ -131,17 +131,17 @@ SF_PROD_AUTH_URL         → Production (production)
 
 以下の順に実行され、個別に無効化できます。
 
-| ステージ | ゲート |
-|---|---|
-| `lint` | ESLint の終了状態 |
-| `prettier` | フォーマット検査 |
-| `code_analyzer` | `severity_threshold` 以下の違反が 0 件 |
-| `validate_deploy` | dry-run デプロイが検証を通過 |
-| `unit_test` | org カバレッジ ≥ `coverage_threshold`（検証デプロイの結果を読むため Apex テストは 1 回だけ実行） |
-| `deploy` | 本デプロイ成功（CI では PR 以外のイベントのみ実行） |
-| `integration_test` | Newman または任意コマンド |
-| `e2e_test` | Playwright または任意コマンド |
-| `documentation` | rtk-sf がシステム設計書を再生成 |
+| ステージ           | ゲート                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------ |
+| `lint`             | ESLint の終了状態                                                                                |
+| `prettier`         | フォーマット検査                                                                                 |
+| `code_analyzer`    | `severity_threshold` 以下の違反が 0 件                                                           |
+| `validate_deploy`  | dry-run デプロイが検証を通過                                                                     |
+| `unit_test`        | org カバレッジ ≥ `coverage_threshold`（検証デプロイの結果を読むため Apex テストは 1 回だけ実行） |
+| `deploy`           | 本デプロイ成功（CI では PR 以外のイベントのみ実行）                                              |
+| `integration_test` | Newman または任意コマンド                                                                        |
+| `e2e_test`         | Playwright または任意コマンド                                                                    |
+| `documentation`    | rtk-sf がシステム設計書を再生成                                                                  |
 
 ```bash
 npx sfdx-devops-kit run --env uat            # 環境指定
@@ -168,10 +168,10 @@ npx sfdx-devops-kit deliverables --base origin/develop --format package-xml \
 - 課題キー: DEMO-42
 - コンポーネント数: 2
 
-| 種別 (Type) | API 名 (Name) | 変更 (Change) |
-| --- | --- | --- |
-| ApexClass | `AccountNameFormatter` | added |
-| CustomField | `Order__c.Status__c` | modified |
+| 種別 (Type) | API 名 (Name)          | 変更 (Change) |
+| ----------- | ---------------------- | ------------- |
+| ApexClass   | `AccountNameFormatter` | added         |
+| CustomField | `Order__c.Status__c`   | modified      |
 ```
 
 ファイルパスをコンポーネント単位に正規化します。LWC バンドルは 1 件、`-meta.xml` は別件に数えず、項目は `Object.Field` 表記。`sfdx-project.json` のパッケージディレクトリ配下のみをメタデータと見なすため、`.github/workflows/` の CI 定義が Salesforce の Workflow と誤認されることはありません。CI は全 PR にこれを添付し、`/sfdx-review` がチケットへ投稿します。
@@ -180,10 +180,10 @@ npx sfdx-devops-kit deliverables --base origin/develop --format package-xml \
 
 ## Claude Code 連携
 
-| コマンド | 動作 |
-|---|---|
-| `/sfdx-review` | 差分を自社ルールで review し、**指摘と成果物一覧**を Backlog チケットへ投稿。クリティカル指摘が無い場合のみ `review_ready` へ遷移 |
-| `/sfdx-deliverables` | チケットの納品メタデータを記録（チケット単位 `package.xml` も任意添付） |
+| コマンド             | 動作                                                                                                                              |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `/sfdx-review`       | 差分を自社ルールで review し、**指摘と成果物一覧**を Backlog チケットへ投稿。クリティカル指摘が無い場合のみ `review_ready` へ遷移 |
+| `/sfdx-deliverables` | チケットの納品メタデータを記録（チケット単位 `package.xml` も任意添付）                                                           |
 
 いずれも **Backlog MCP サーバー**経由でチケットを操作するため、Backlog の資格情報をリポジトリに置きません。
 
@@ -205,23 +205,23 @@ python3 -m rtk_sf index
 
 役割ごとの詳細手順は [運用マニュアル](docs/OPERATIONS_MANUAL.ja.md) を参照してください。
 
-| 役割 | 作業 |
-|---|---|
-| 開発者 | チケット受領 → Claude Code で実装 → 個人 Dev Sandbox で確認 → `/sfdx-review` → PR 作成 |
-| レビュアー | CI 結果と AI レビューを確認 → Approve → `develop` へマージ |
-| DevOps | `sfdx-pipeline.config.yml` の編集で Sandbox 追加やゲート調整、`knowledge/sfdx/` の継続更新 |
+| 役割       | 作業                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------ |
+| 開発者     | チケット受領 → Claude Code で実装 → 個人 Dev Sandbox で確認 → `/sfdx-review` → PR 作成     |
+| レビュアー | CI 結果と AI レビューを確認 → Approve → `develop` へマージ                                 |
+| DevOps     | `sfdx-pipeline.config.yml` の編集で Sandbox 追加やゲート調整、`knowledge/sfdx/` の継続更新 |
 
 ---
 
 ## トラブルシューティング
 
-| 症状 | 原因と対処 |
-|---|---|
-| `Secret SF_ST_AUTH_URL is not set` | `validate` が示す Secret を登録。値は `sf org display --target-org <alias> --verbose` の Sfdx Auth Url |
-| `UninstantiableEngineError` | JDK 不在。Java 11+ を導入、または `rule_selector: eslint` |
-| `Coverage gate cannot be evaluated` | デプロイが Apex テストを実行していない（`test_level` が `NoTestRun`） |
-| `cannot also be provided when using --source-dir` | 1 環境にデプロイセレクタが 2 つ。`validate` で検出可能 |
-| `deliverables` が空 | base ref がローカルに無い（`git fetch origin`） |
+| 症状                                              | 原因と対処                                                                                             |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `Secret SF_ST_AUTH_URL is not set`                | `validate` が示す Secret を登録。値は `sf org display --target-org <alias> --verbose` の Sfdx Auth Url |
+| `UninstantiableEngineError`                       | JDK 不在。Java 11+ を導入、または `rule_selector: eslint`                                              |
+| `Coverage gate cannot be evaluated`               | デプロイが Apex テストを実行していない（`test_level` が `NoTestRun`）                                  |
+| `cannot also be provided when using --source-dir` | 1 環境にデプロイセレクタが 2 つ。`validate` で検出可能                                                 |
+| `deliverables` が空                               | base ref がローカルに無い（`git fetch origin`）                                                        |
 
 ---
 

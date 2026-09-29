@@ -46,7 +46,9 @@ export const SCAFFOLD_DIRS = [
 
 /** Scripts merged into the target `package.json`. */
 export const PACKAGE_SCRIPTS = {
-  lint: "eslint force-app/main/default/lwc",
+  // Matches the Salesforce template's own glob, plus the flag that keeps an
+  // empty project (no LWC yet) from failing with exit 2.
+  lint: 'eslint "**/{aura,lwc}/**/*.js" --no-error-on-unmatched-pattern',
   prettier: 'prettier --check "**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}"',
   "prettier:format": 'prettier --write "**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}"',
   "test:unit": "sfdx-lwc-jest",
@@ -59,16 +61,19 @@ export const PACKAGE_SCRIPTS = {
 /**
  * Dev dependencies merged into the target `package.json`.
  *
- * Pinned to the latest majors at the time of writing; `init --latest` resolves
- * live versions from the registry instead, so a project scaffolded later does
- * not start out behind.
+ * Only added when absent: a project generated from the Salesforce standard
+ * template already pins these, and its pins win.
+ *
+ * `eslint` is pinned to 9.x deliberately, not to the newest release:
+ * `@salesforce/eslint-config-lwc` declares `eslint: ^9` as a peer dependency, so
+ * installing 10.x produces a project whose lint configuration cannot load.
  */
 export const PACKAGE_DEV_DEPENDENCIES = {
   "@playwright/test": "^1.63.0",
   "@prettier/plugin-xml": "^3.4.2",
   "@salesforce/eslint-config-lwc": "^4.1.2",
   "@salesforce/sfdx-lwc-jest": "^7.9.0",
-  eslint: "^10.11.0",
+  eslint: "^9.39.5",
   prettier: "^3.9.9",
   "prettier-plugin-apex": "^2.3.0",
 };

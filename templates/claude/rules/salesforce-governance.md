@@ -7,18 +7,18 @@ Applies to every Salesforce change an agent makes here.
 This project integrates **rtk-sf** by default. Before opening a raw file, use its
 MCP tools — they return compressed specs instead of whole sources:
 
-| Task | Tool |
-|---|---|
-| Find a component | `search_codebase(query)` |
-| Read a component's spec | `query_compressed_spec(component_name)` |
-| Read an Apex class before editing | `get_class_skeleton(component_name, focus_methods)` |
-| Blast radius before editing | `get_relations(component_name)` |
-| Object fields for data work | `get_object_schema(object_name)` |
-| Record types | `get_record_types(object_name)` |
-| LWC exposure and targets | `get_lwc_targets()` |
-| Natural-language data question | `nl_to_soql(user_input)` |
-| Deploy / retrieve / run tests quietly | `sf_command(action, target_org, …)` |
-| Write discovered business logic back | `annotate_component(component_name, key, value)` |
+| Task                                  | Tool                                                |
+| ------------------------------------- | --------------------------------------------------- |
+| Find a component                      | `search_codebase(query)`                            |
+| Read a component's spec               | `query_compressed_spec(component_name)`             |
+| Read an Apex class before editing     | `get_class_skeleton(component_name, focus_methods)` |
+| Blast radius before editing           | `get_relations(component_name)`                     |
+| Object fields for data work           | `get_object_schema(object_name)`                    |
+| Record types                          | `get_record_types(object_name)`                     |
+| LWC exposure and targets              | `get_lwc_targets()`                                 |
+| Natural-language data question        | `nl_to_soql(user_input)`                            |
+| Deploy / retrieve / run tests quietly | `sf_command(action, target_org, …)`                 |
+| Write discovered business logic back  | `annotate_component(component_name, key, value)`    |
 
 If the tools are not available, say so once and fall back to targeted reads. Do
 not dump whole metadata folders into context.

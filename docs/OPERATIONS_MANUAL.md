@@ -35,11 +35,11 @@ Ticket statuses come from `backlog_integration.status_mapping` in
 
 ## Roles
 
-| Role | Work | Tools |
-|---|---|---|
-| Developer | Take the ticket, build, verify in a dev sandbox, `/sfdx-review`, open the PR | Claude Code, dev sandbox, Backlog MCP, git |
-| Reviewer / lead | Check CI and the AI review, approve, merge to `develop` | GitHub PR, Actions |
-| DevOps | Change config (add a sandbox, adjust a gate), maintain the knowledge base, run releases | `sfdx-pipeline.config.yml`, GitHub Secrets |
+| Role            | Work                                                                                    | Tools                                      |
+| --------------- | --------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Developer       | Take the ticket, build, verify in a dev sandbox, `/sfdx-review`, open the PR            | Claude Code, dev sandbox, Backlog MCP, git |
+| Reviewer / lead | Check CI and the AI review, approve, merge to `develop`                                 | GitHub PR, Actions                         |
+| DevOps          | Change config (add a sandbox, adjust a gate), maintain the knowledge base, run releases | `sfdx-pipeline.config.yml`, GitHub Secrets |
 
 The dividing line: **anything the config can change, change in the config.** If
 you need to edit the workflow YAML, a config option is missing — open an issue.
@@ -212,12 +212,12 @@ Paste the deliverables into the PR body:
 npx sfdx-devops-kit deliverables --base origin/develop --format md
 ```
 
-| Job | What it does | Result |
-|---|---|---|
-| `plan` | Validates config, publishes the plan to the step summary | ✅ |
-| `quality` | ESLint / Prettier / Code Analyzer | ✅ |
-| `validate` | Dry-run deploy to ST + coverage gate | ✅ coverage 87% |
-| `deliverables` | Attaches the component list and `package.xml` | ✅ 6 components |
+| Job            | What it does                                             | Result          |
+| -------------- | -------------------------------------------------------- | --------------- |
+| `plan`         | Validates config, publishes the plan to the step summary | ✅              |
+| `quality`      | ESLint / Prettier / Code Analyzer                        | ✅              |
+| `validate`     | Dry-run deploy to ST + coverage gate                     | ✅ coverage 87% |
+| `deliverables` | Attaches the component list and `package.xml`            | ✅ 6 components |
 
 `deploy` never runs on a pull request, so a fork PR cannot deploy into an org.
 
@@ -294,14 +294,14 @@ verify the main journeys, close the ticket, and regenerate docs
 
 ### Rollback
 
-| Situation | Action |
-|---|---|
-| Previous state is deployable | Validate then deploy the previous release tag |
-| A new field is the problem | Keep the field, disable the behavior through a custom-metadata switch |
-| Something must be removed | Prepare `destructiveChanges.xml` and check the impact first |
+| Situation                    | Action                                                                |
+| ---------------------------- | --------------------------------------------------------------------- |
+| Previous state is deployable | Validate then deploy the previous release tag                         |
+| A new field is the problem   | Keep the field, disable the behavior through a custom-metadata switch |
+| Something must be removed    | Prepare `destructiveChanges.xml` and check the impact first           |
 
 Salesforce has no "undo deployment". Writing the rollback plan on the ticket
-*before* release is the real safety net.
+_before_ release is the real safety net.
 
 ---
 
@@ -350,44 +350,44 @@ gates; if you must, record why on the ticket.
 
 ## Routine
 
-| Cadence | Work |
-|---|---|
-| Every release | Record deliverables on the ticket, regenerate docs |
-| Weekly | Review CI failure patterns, add lessons to `knowledge/sfdx/coding-rules.md` |
-| Monthly | Revisit thresholds, update dependencies (`npm audit`) |
-| Quarterly | Refresh secrets after sandbox refreshes, audit permissions |
+| Cadence       | Work                                                                        |
+| ------------- | --------------------------------------------------------------------------- |
+| Every release | Record deliverables on the ticket, regenerate docs                          |
+| Weekly        | Review CI failure patterns, add lessons to `knowledge/sfdx/coding-rules.md` |
+| Monthly       | Revisit thresholds, update dependencies (`npm audit`)                       |
+| Quarterly     | Refresh secrets after sandbox refreshes, audit permissions                  |
 
-When adding a rule, write down *why*. The AI review quotes that file as its
+When adding a rule, write down _why_. The AI review quotes that file as its
 justification.
 
 ---
 
 ## Quick reference
 
-| Goal | Command |
-|---|---|
-| Install | `npx sfdx-devops-kit init .` |
-| Validate config, list secrets | `npx sfdx-devops-kit validate` |
-| See what will run | `npx sfdx-devops-kit plan --env st` |
-| Run locally | `npx sfdx-devops-kit run --env dev` |
-| One or more stages | `npx sfdx-devops-kit run code_analyzer unit_test` |
-| Show commands only | `npx sfdx-devops-kit run --dry-run` |
-| Deliverables | `npx sfdx-devops-kit deliverables --base origin/develop` |
-| Release manifest | `… --base origin/main --head origin/develop --format package-xml --out manifest/package.xml` |
-| Ticket key | `npx sfdx-devops-kit ticket` |
-| Environment check | `npx sfdx-devops-kit doctor` |
-| AI review | `/sfdx-review` |
-| Record deliverables | `/sfdx-deliverables` |
+| Goal                          | Command                                                                                      |
+| ----------------------------- | -------------------------------------------------------------------------------------------- |
+| Install                       | `npx sfdx-devops-kit init .`                                                                 |
+| Validate config, list secrets | `npx sfdx-devops-kit validate`                                                               |
+| See what will run             | `npx sfdx-devops-kit plan --env st`                                                          |
+| Run locally                   | `npx sfdx-devops-kit run --env dev`                                                          |
+| One or more stages            | `npx sfdx-devops-kit run code_analyzer unit_test`                                            |
+| Show commands only            | `npx sfdx-devops-kit run --dry-run`                                                          |
+| Deliverables                  | `npx sfdx-devops-kit deliverables --base origin/develop`                                     |
+| Release manifest              | `… --base origin/main --head origin/develop --format package-xml --out manifest/package.xml` |
+| Ticket key                    | `npx sfdx-devops-kit ticket`                                                                 |
+| Environment check             | `npx sfdx-devops-kit doctor`                                                                 |
+| AI review                     | `/sfdx-review`                                                                               |
+| Record deliverables           | `/sfdx-deliverables`                                                                         |
 
-| When | Status | Who |
-|---|---|---|
-| Starting work | `処理中` | Developer (manual) |
-| `/sfdx-review` with zero critical findings | `処理済み` | Skill (automatic) |
-| After release | `完了` | Developer or lead |
+| When                                       | Status     | Who                |
+| ------------------------------------------ | ---------- | ------------------ |
+| Starting work                              | `処理中`   | Developer (manual) |
+| `/sfdx-review` with zero critical findings | `処理済み` | Skill (automatic)  |
+| After release                              | `完了`     | Developer or lead  |
 
-| Purpose | Branch | Merges into |
-|---|---|---|
-| Feature | `feature/PROJ-142-summary` | `develop` |
-| Bug fix | `bugfix/PROJ-151-summary` | `develop` |
-| Hotfix | `hotfix/PROJ-160-summary` | `main` and `develop` |
-| Release | `develop` → `main` | `main` |
+| Purpose | Branch                     | Merges into          |
+| ------- | -------------------------- | -------------------- |
+| Feature | `feature/PROJ-142-summary` | `develop`            |
+| Bug fix | `bugfix/PROJ-151-summary`  | `develop`            |
+| Hotfix  | `hotfix/PROJ-160-summary`  | `main` and `develop` |
+| Release | `develop` → `main`         | `main`               |

@@ -28,13 +28,13 @@ ticket number.
 This project integrates **rtk-sf** by default. Prefer its MCP tools over reading
 raw files, so a large class costs a few hundred tokens instead of thousands:
 
-| Need | Tool |
-|---|---|
-| A class's shape before judging a method | `get_class_skeleton(component_name, focus_methods)` |
-| What a component is and its fields | `query_compressed_spec(component_name)` |
-| Blast radius of an edit | `get_relations(component_name)` |
-| Object fields, picklists, validation rules | `get_object_schema(object_name)` |
-| Existing record shapes | `soql_query(...)` or `nl_to_soql(...)` |
+| Need                                       | Tool                                                |
+| ------------------------------------------ | --------------------------------------------------- |
+| A class's shape before judging a method    | `get_class_skeleton(component_name, focus_methods)` |
+| What a component is and its fields         | `query_compressed_spec(component_name)`             |
+| Blast radius of an edit                    | `get_relations(component_name)`                     |
+| Object fields, picklists, validation rules | `get_object_schema(object_name)`                    |
+| Existing record shapes                     | `soql_query(...)` or `nl_to_soql(...)`              |
 
 If those tools are unavailable (rtk-sf not installed), fall back to `git diff`
 and targeted file reads, and mention the fallback in the summary.
@@ -72,11 +72,11 @@ It prints the MCP server name, the ticket key, the `statusId`, and the comment
 body. Issue the calls through the Backlog MCP server (nulab/backlog-mcp-server;
 add `backlog_integration.mcp.tool_prefix` if the project sets one):
 
-| Purpose | Tool | Arguments |
-|---|---|---|
-| Read the ticket | `get_issue` | `{ issueKey }` |
-| Post the review | `add_issue_comment` | `{ issueKey, content }` |
-| Move the status | `update_issue` | `{ issueKey, statusId }` |
+| Purpose         | Tool                | Arguments                |
+| --------------- | ------------------- | ------------------------ |
+| Read the ticket | `get_issue`         | `{ issueKey }`           |
+| Post the review | `add_issue_comment` | `{ issueKey, content }`  |
+| Move the status | `update_issue`      | `{ issueKey, statusId }` |
 
 `update_issue` also accepts `comment`, so the comment and the status change can
 be one call when you prefer.

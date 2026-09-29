@@ -50,11 +50,11 @@ flowchart TD
 
 ## 役割と責務
 
-| 役割 | 担当作業 | 主なツール |
-|---|---|---|
-| 開発者 | チケット受領、実装、Dev Sandbox 確認、`/sfdx-review`、PR 作成 | Claude Code、Dev Sandbox、Backlog MCP、git |
-| レビュアー / リード | CI 結果と AI レビューの確認、Approve、`develop` へマージ | GitHub PR、GitHub Actions |
-| DevOps / 管理者 | 設定変更（Sandbox 追加・閾値調整）、ナレッジ更新、リリース実行 | `sfdx-pipeline.config.yml`、GitHub Secrets |
+| 役割                | 担当作業                                                       | 主なツール                                 |
+| ------------------- | -------------------------------------------------------------- | ------------------------------------------ |
+| 開発者              | チケット受領、実装、Dev Sandbox 確認、`/sfdx-review`、PR 作成  | Claude Code、Dev Sandbox、Backlog MCP、git |
+| レビュアー / リード | CI 結果と AI レビューの確認、Approve、`develop` へマージ       | GitHub PR、GitHub Actions                  |
+| DevOps / 管理者     | 設定変更（Sandbox 追加・閾値調整）、ナレッジ更新、リリース実行 | `sfdx-pipeline.config.yml`、GitHub Secrets |
 
 境界線：**設定で変えられることは設定で変える**。ワークフロー YAML を編集する
 必要が出たら、それは設定項目が足りていないサインです（Issue を立ててください）。
@@ -306,14 +306,14 @@ Backlog に投稿されるコメント（成果物一覧を含む）：
 - ブランチ: `feature/PROJ-142-discount-approval`
 - コンポーネント数: 6
 
-| 種別 (Type) | API 名 (Name) | 変更 (Change) |
-| --- | --- | --- |
-| ApexClass | `OpportunityDiscountController` | added |
-| ApexClass | `OpportunityDiscountControllerTest` | added |
-| CustomField | `Opportunity.Discount__c` | added |
-| CustomField | `Opportunity.Discount_Status__c` | added |
-| Flow | `Discount_Approval` | added |
-| LightningComponentBundle | `discountRequest` | added |
+| 種別 (Type)              | API 名 (Name)                       | 変更 (Change) |
+| ------------------------ | ----------------------------------- | ------------- |
+| ApexClass                | `OpportunityDiscountController`     | added         |
+| ApexClass                | `OpportunityDiscountControllerTest` | added         |
+| CustomField              | `Opportunity.Discount__c`           | added         |
+| CustomField              | `Opportunity.Discount_Status__c`    | added         |
+| Flow                     | `Discount_Approval`                 | added         |
+| LightningComponentBundle | `discountRequest`                   | added         |
 
 **種別ごとの件数:** ApexClass 2 / CustomField 2 / Flow 1 / LightningComponentBundle 1
 ```
@@ -340,12 +340,12 @@ npx sfdx-devops-kit deliverables --base origin/develop --format md
 
 CI の実行結果例：
 
-| ジョブ | 内容 | 結果 |
-|---|---|---|
-| `plan` | 設定検証、plan 出力（Step Summary に掲載） | ✅ |
-| `quality` | ESLint / Prettier / Code Analyzer | ✅ |
-| `validate` | ST への dry-run 検証デプロイ＋カバレッジゲート | ✅ coverage 87% |
-| `deliverables` | 成果物一覧と `package.xml` を artifact 添付 | ✅ 6 components |
+| ジョブ         | 内容                                           | 結果            |
+| -------------- | ---------------------------------------------- | --------------- |
+| `plan`         | 設定検証、plan 出力（Step Summary に掲載）     | ✅              |
+| `quality`      | ESLint / Prettier / Code Analyzer              | ✅              |
+| `validate`     | ST への dry-run 検証デプロイ＋カバレッジゲート | ✅ coverage 87% |
+| `deliverables` | 成果物一覧と `package.xml` を artifact 添付    | ✅ 6 components |
 
 `deploy` ジョブは **PR では実行されません**（`github.event_name != 'pull_request'`）。
 フォークからの PR が org にデプロイできないための安全弁です。
@@ -466,11 +466,11 @@ gh workflow run sfdx-ci-cd.yml -f environment=prod -f deploy=true
 
 ### 6. 切り戻し
 
-| 状況 | 対応 |
-|---|---|
-| 直前の状態に戻せる | 1 つ前のリリースタグから `validate_deploy` → `deploy` |
+| 状況               | 対応                                                             |
+| ------------------ | ---------------------------------------------------------------- |
+| 直前の状態に戻せる | 1 つ前のリリースタグから `validate_deploy` → `deploy`            |
 | 追加した項目が問題 | 項目は残し、機能フラグ（カスタムメタデータ）で無効化するのが安全 |
-| 削除が必要 | `destructiveChanges.xml` を作成し、影響を確認してから実行 |
+| 削除が必要         | `destructiveChanges.xml` を作成し、影響を確認してから実行        |
 
 Salesforce は「デプロイの取り消し」が無いため、**切り戻し手順をリリース前に
 チケットへ書いておく**ことが実質的な保険になります。
@@ -526,12 +526,12 @@ npx sfdx-devops-kit run --env st --skip e2e_test
 
 ## 定期運用
 
-| 頻度 | 作業 |
-|---|---|
-| リリースごと | 成果物一覧をチケットへ記録、ドキュメント再生成 |
-| 週次 | CI 失敗傾向の確認、`knowledge/sfdx/coding-rules.md` へ学びを追記 |
-| 月次 | 閾値（カバレッジ・深刻度）の妥当性をレビュー、依存パッケージ更新（`npm audit`） |
-| 四半期 | Sandbox リフレッシュ後の Secrets 更新、権限設定の棚卸し |
+| 頻度         | 作業                                                                            |
+| ------------ | ------------------------------------------------------------------------------- |
+| リリースごと | 成果物一覧をチケットへ記録、ドキュメント再生成                                  |
+| 週次         | CI 失敗傾向の確認、`knowledge/sfdx/coding-rules.md` へ学びを追記                |
+| 月次         | 閾値（カバレッジ・深刻度）の妥当性をレビュー、依存パッケージ更新（`npm audit`） |
+| 四半期       | Sandbox リフレッシュ後の Secrets 更新、権限設定の棚卸し                         |
 
 ルールを増やすときは、必ず `knowledge/sfdx/coding-rules.md` に「なぜ」を
 書いてください。AI レビューはこのファイルを根拠として引用します。
@@ -542,34 +542,34 @@ npx sfdx-devops-kit run --env st --skip e2e_test
 
 ### コマンド
 
-| 目的 | コマンド |
-|---|---|
-| 導入 | `npx sfdx-devops-kit init .` |
-| 設定検証と Secrets 確認 | `npx sfdx-devops-kit validate` |
-| 実行内容の確認 | `npx sfdx-devops-kit plan --env st` |
-| ローカル実行 | `npx sfdx-devops-kit run --env dev` |
-| 特定ステージのみ | `npx sfdx-devops-kit run code_analyzer unit_test` |
-| 実行せず確認 | `npx sfdx-devops-kit run --dry-run` |
-| 成果物一覧 | `npx sfdx-devops-kit deliverables --base origin/develop` |
-| リリース manifest | `npx sfdx-devops-kit deliverables --base origin/main --head origin/develop --format package-xml --out manifest/package.xml` |
-| 課題キー確認 | `npx sfdx-devops-kit ticket` |
-| 環境診断 | `npx sfdx-devops-kit doctor` |
-| AI レビュー | `/sfdx-review`（Claude Code） |
-| 成果物記録のみ | `/sfdx-deliverables`（Claude Code） |
+| 目的                    | コマンド                                                                                                                    |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 導入                    | `npx sfdx-devops-kit init .`                                                                                                |
+| 設定検証と Secrets 確認 | `npx sfdx-devops-kit validate`                                                                                              |
+| 実行内容の確認          | `npx sfdx-devops-kit plan --env st`                                                                                         |
+| ローカル実行            | `npx sfdx-devops-kit run --env dev`                                                                                         |
+| 特定ステージのみ        | `npx sfdx-devops-kit run code_analyzer unit_test`                                                                           |
+| 実行せず確認            | `npx sfdx-devops-kit run --dry-run`                                                                                         |
+| 成果物一覧              | `npx sfdx-devops-kit deliverables --base origin/develop`                                                                    |
+| リリース manifest       | `npx sfdx-devops-kit deliverables --base origin/main --head origin/develop --format package-xml --out manifest/package.xml` |
+| 課題キー確認            | `npx sfdx-devops-kit ticket`                                                                                                |
+| 環境診断                | `npx sfdx-devops-kit doctor`                                                                                                |
+| AI レビュー             | `/sfdx-review`（Claude Code）                                                                                               |
+| 成果物記録のみ          | `/sfdx-deliverables`（Claude Code）                                                                                         |
 
 ### ステータス遷移
 
-| タイミング | Backlog ステータス | 誰が |
-|---|---|---|
-| 着手時 | `処理中` | 開発者（手動） |
-| `/sfdx-review` で critical 0 件 | `処理済み` | スキルが自動更新 |
-| リリース完了後 | `完了` | 開発者またはリード |
+| タイミング                      | Backlog ステータス | 誰が               |
+| ------------------------------- | ------------------ | ------------------ |
+| 着手時                          | `処理中`           | 開発者（手動）     |
+| `/sfdx-review` で critical 0 件 | `処理済み`         | スキルが自動更新   |
+| リリース完了後                  | `完了`             | 開発者またはリード |
 
 ### ブランチ
 
-| 用途 | 命名 | マージ先 |
-|---|---|---|
-| 機能開発 | `feature/PROJ-142-summary` | `develop` |
-| 不具合修正 | `bugfix/PROJ-151-summary` | `develop` |
-| 緊急対応 | `hotfix/PROJ-160-summary` | `main` と `develop` |
-| リリース | `develop` → `main` | `main` |
+| 用途       | 命名                       | マージ先            |
+| ---------- | -------------------------- | ------------------- |
+| 機能開発   | `feature/PROJ-142-summary` | `develop`           |
+| 不具合修正 | `bugfix/PROJ-151-summary`  | `develop`           |
+| 緊急対応   | `hotfix/PROJ-160-summary`  | `main` と `develop` |
+| リリース   | `develop` → `main`         | `main`              |
